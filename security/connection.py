@@ -118,6 +118,9 @@ class Connection:
         print(self.sending_keys)
         print(self.receiving_keys)
         print(self.priv_node_key)
+
+    def getKeys(self):
+        return self.priv_node_key, self.sending_keys
     
 
 

@@ -61,5 +61,5 @@ Pendant l'établissement des clefs:
 		Base64(AES(Pickle({I2, Base64(AES(Pickle({I3, Base64(ECIES(Pickle({I3, K3})))})), K2)}), K1))
  - à destination de Noeud au bout:
 		Base64(AES(Pickle({I2, Base64(AES(Pickle({I3, Base64(AES(Pickle({N2, Base64(ECIES(Pickle({N2, K})))})), K3)})), K2)}), K1))
-
+(c'est marrant)
 
