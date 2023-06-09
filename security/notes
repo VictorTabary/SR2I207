@@ -1,0 +1,43 @@
+For the Onion Service:
+	- sign the Onion Service descriptor
+		ECDSA {
+		   privkey := private part of the key in its address
+		}
+
+	- verify one-time secret + rdv address ??
+	
+	- connect to the rdv point
+		trame?
+	
+
+For the client:
+	- verify a descriptor signature (with the address of the service)
+	- send a one-time secret to the rendez-vous point
+	- send the same one-time secret and the rendez-vous address to the service through one of the introduction points
+
+
+
+For the rendez-vous point:
+	- match the secrets from both sides
+		
+
+Sources : 
+https://github.com/ecies/py
+https://www.quickprogrammingtips.com/python/aes-256-encryption-and-decryption-in-python.html
+https://stackoverflow.com/questions/34653875/python-how-to-send-data-over-tcp
+
+
+Pour l'extrémité:
+
+from Crypto.PublicKey import ECC
+from Crypto.Signature import DSS
+
+key = ECC.generate(curve='P-256')
+h = SHA256.new(message)
+signer = DSS.new(key, 'fips-186-3')
+signer.sign(h)
+
+Pour exporter la clef:
+
+base64.b64encode(key.public_key().export_key(format='DER', compress=True))
+
