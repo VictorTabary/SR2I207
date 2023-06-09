@@ -1,0 +1,35 @@
+For the Onion Service:
+	- sign the Onion Service descriptor
+		ECDSA {
+		   privkey := private part of the key in its address
+		}
+
+	- verify one-time secret + rdv address ??
+	
+	- connect to the rdv point
+		trame?
+	
+
+For the client:
+	- verify a descriptor signature (with the address of the service)
+	- send a one-time secret to the rendez-vous point
+		ECDSA {
+		   pubkey := point address
+		},
+		secret = ??
+
+	- send the same one-time secret and the rendez-vous address to the service through one of the introduction points
+		AES {
+		   key := successive encryption of the public keys of the different nodes (backwards)
+		},
+		secret = ??
+		rdv_addr := point address
+		
+	-
+
+
+For the rendez-vous point:
+	- match the secrets from both sides
+		
+
+ 
