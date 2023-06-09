@@ -8,6 +8,7 @@ import socket
 import ecies
 import pickle
 
+
 PASSWORD_SIZE = 15
 BLOCK_SIZE = 16
 pad = lambda s: s + ((BLOCK_SIZE - len(s) % BLOCK_SIZE) * chr(BLOCK_SIZE - len(s) % BLOCK_SIZE)).encode()
@@ -34,7 +35,7 @@ def decrypt(enc, private_key):
 
 
 def send_message(host, port, message):
-    print(message)
+    #print(message)
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((host, port))
@@ -50,7 +51,7 @@ class Node:
         self.key = key
     
     def __str__(self):
-        return f"Node at address {self.__ip} with public key \n{self.__key}."
+        return f"Node at address {self.ip} with public key \n{self.key}."
     
 
 class Connection:
@@ -62,6 +63,9 @@ class Connection:
         self.receiving_keys = []
 
         self.conn = self.establish_conn()
+    
+    def encaps_message(self, addr, message):
+        return pickle.dumps({'dest': addr, 'm': message})
 
     def establish_conn(self):
         for i in range(len(self.interm)):
@@ -71,44 +75,50 @@ class Connection:
             self.sending_keys.append(self.priv_aes_key)
 
             # la chiffrer avec la clé publique ECDSA et l'encapsuler pour l'envoyer
-            self.enc_key = base64.b64encode(ecies.encrypt('0x' + base64.b64decode(self.Pi).hex(), self.priv_aes_key))
+            self.clear_message = self.encaps_message(self.interm[i].ip, self.priv_aes_key)
+            self.enc_key = base64.b64encode(ecies.encrypt('0x' + base64.b64decode(self.Pi).hex(), self.clear_message))
             for j in range(i)[::-1]:
-                self.enc_key = base64.b64encode(encrypt(self.enc_key, self.sending_keys[j]))
+                self.clear_message = self.encaps_message(self.interm[j].ip, self.enc_key)
+                self.enc_key = base64.b64encode(encrypt(self.clear_message, self.sending_keys[j]))
             # l'envoyer au destinataire
-            send_message(self.interm[i].ip, 9050, self.enc_key)
+            send_message(self.interm[0].ip, 9050, self.enc_key)
 
             # faire pareil avec les clés de déchiffrement au retour            
             self.priv_aes_key = get_private_key()
             self.receiving_keys.append(self.priv_aes_key)
 
-            self.enc_key = base64.b64encode(ecies.encrypt('0x' + base64.b64decode(self.Pi).hex(), self.priv_aes_key))
+            self.clear_message = self.encaps_message(self.interm[i].ip, self.priv_aes_key)
+            self.enc_key = base64.b64encode(ecies.encrypt('0x' + base64.b64decode(self.Pi).hex(), self.clear_message))
             for j in range(i)[::-1]:
-                self.enc_key = base64.b64encode(encrypt(self.enc_key, self.receiving_keys[j]))
+                self.clear_message = self.encaps_message(self.interm[j].ip, self.enc_key)
+                self.enc_key = base64.b64encode(encrypt(self.clear_message, self.receiving_keys[j]))
 
-            send_message(self.interm[i].ip, 9050, self.enc_key)
+            send_message(self.interm[0].ip, 9050, self.enc_key)
         
         # faire pareil avec la clé du noeud destinataire
         self.priv_node_key = get_private_key()
-        self.enc_key = base64.b64encode(ecies.encrypt('0x' + base64.b64decode(self.dest.key).hex(), self.priv_node_key))
+        self.clear_message = self.encaps_message(self.dest.ip, self.priv_node_key)
+        self.enc_key = base64.b64encode(ecies.encrypt('0x' + base64.b64decode(self.dest.key).hex(), self.clear_message))
         for j in range(len(self.interm))[::-1]:
-            self.enc_key = base64.b64encode(encrypt(self.enc_key, self.sending_keys[j]))
+            self.clear_message = self.encaps_message(self.interm[j].ip, self.enc_key)
+            self.enc_key = base64.b64encode(encrypt(self.clear_message, self.sending_keys[j]))
+
+        send_message(self.interm[0].ip, 9050, self.enc_key)
+
+        # envoyer tous les clefs du retour au destinataire
+        self.clear_message = self.encaps_message(self.dest.ip, dict(enumerate(self.receiving_keys)))
+        self.enc_key = base64.b64encode(encrypt(self.clear_message, self.priv_node_key))
+        for j in range(len(self.interm))[::-1]:
+            self.clear_message = self.encaps_message(self.interm[j].ip, self.enc_key)
+            self.enc_key = base64.b64encode(encrypt(self.clear_message, self.sending_keys[j]))
 
         send_message(self.dest.ip, 9050, self.enc_key)
 
-        # envoyer tous les clefs du retour au destinataire
-        send_message(self.dest.ip, 9050, base64.b64encode(pickle.dumps(self.receiving_keys)))
-
         # for debug purposes
         print(self.sending_keys)
+        print(self.receiving_keys)
+        print(self.priv_node_key)
     
-
-# A METTRE DANS UNE CLASSE TUNNEL?
-    def send(self, message):
-        """Une fois que la connexion est établie, pour envoyer un message"""
-        self.enc_mess = encrypt(message, self.priv_node_key)
-        for i in range(len(self.interm))[::-1]:
-            self.enc_mess = encrypt(self.enc_mess, self.sending_keys[i])
-        send_message(self.dest.ip, 9050, base64.b64encode(self.enc_key))
 
 
 con = Connection(Node("localhost", b'AwuTgwUZ6EezzlmP9LOuh6d8z9waqucFv09rSUYq0slS'), [Node("localhost", b'AwuTgwUZ6EezzlmP9LOuh6d8z9waqucFv09rSUYq0slS'), Node("localhost", b'AwuTgwUZ6EezzlmP9LOuh6d8z9waqucFv09rSUYq0slS')])
