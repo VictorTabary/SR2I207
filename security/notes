@@ -27,17 +27,26 @@ https://www.quickprogrammingtips.com/python/aes-256-encryption-and-decryption-in
 https://stackoverflow.com/questions/34653875/python-how-to-send-data-over-tcp
 
 
-Pour l'extrémité:
+Pour signer :
 
-from Crypto.PublicKey import ECC
-from Crypto.Signature import DSS
+	from secp256k1 import PrivateKey
+	key = PrivateKey()
 
-key = ECC.generate(curve='P-256')
-h = SHA256.new(message)
-signer = DSS.new(key, 'fips-186-3')
-signer.sign(h)
+	base64.b64encode(key.ecdsa_serialize_compact(key.ecdsa_sign(b'bibiuiuhiuh')))
 
-Pour exporter la clef:
 
-base64.b64encode(key.public_key().export_key(format='DER', compress=True))
+Pour chiffrer avec ECIES :
+
+	from ecies import encrypt
+	encrypt('0x' + key.pubkey.serialize().hex(), b'bygbybiu')
+
+
+Pour déchiffrer avec ECIES et récupérer la clef AES :
+
+	decrypt('0x'+key.serialize(), base64.b64decode(c))
+
+
+Pour exporter la clef :
+
+	base64.b64encode(key.pubkey.serialize())
 
