@@ -23,6 +23,7 @@ For the rendez-vous point:
 
 Sources : 
 https://github.com/ecies/py
+https://pypi.org/project/secp256k1/
 https://www.quickprogrammingtips.com/python/aes-256-encryption-and-decryption-in-python.html
 https://stackoverflow.com/questions/34653875/python-how-to-send-data-over-tcp
 
@@ -60,5 +61,5 @@ Pendant l'établissement des clefs:
 		Base64(AES(Pickle({I2, Base64(AES(Pickle({I3, Base64(ECIES(Pickle({I3, K3})))})), K2)}), K1))
  - à destination de Noeud au bout:
 		Base64(AES(Pickle({I2, Base64(AES(Pickle({I3, Base64(AES(Pickle({N2, Base64(ECIES(Pickle({N2, K})))})), K3)})), K2)}), K1))
-		
+
 
