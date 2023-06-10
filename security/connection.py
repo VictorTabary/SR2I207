@@ -9,12 +9,10 @@ from secp256k1 import PrivateKey
 
 
 def send_message(host, port, message):
-    #print(len(message))
+    print(host, port)
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        #s.connect((host, port))
-        s.connect(('localhost', port))      # pour les tests, pour pouvoir avoir des addresses différentes entre les noeuds
-
+        s.connect((host, port))
         s.send(message + b'\n')
         s.close()
     except:
@@ -23,14 +21,14 @@ def send_message(host, port, message):
 
 
 class NodeServer:
-    def __init__(self):
-        #self.ip = socket.gethostbyname(socket.gethostname())
+    def __init__(self, port):
+        self.port = port
+
         self.key = PrivateKey()
         #self.privkey = "0x" + self.key.serialize()  # hexa
         #self.pubkey = self.key.pubkey.serialize()   # pas hexa
         self.privkey = base64.b64decode(b'AQcx++axCPTh3xOmYC8IzUSrrgynvVarDp+2fZj/wf4=').hex()
         self.pubkey = base64.b64decode(b'AwuTgwUZ6EezzlmP9LOuh6d8z9waqucFv09rSUYq0slS')
-        self.ip = "destination"
     
     def __str__(self):
         return f"Node at address {self.ip} with public key \n{self.key}."
@@ -69,8 +67,7 @@ class NodeServer:
     
     def start(self):
         # penser à se déclarer dans la public-relay-list souvent (toutes les 2 minutes?)
-        self.host = ''        # Symbolic name meaning all available interfaces
-        self.port = 9050     
+        self.host = ''        # Symbolic name meaning all available interfaces   
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.bind((self.host, self.port))
         self.s.listen()
@@ -83,12 +80,13 @@ class NodeServer:
 
 
 class NodeObject:
-    def __init__(self, ip, key):
+    def __init__(self, ip, port, key):
         self.ip = ip
+        self.port = port
         self.key = key
     
     def __str__(self):
-        return f"Node at address {self.ip} with public key \n{self.key}."
+        return f"Node at address {self.ip} on port{self.port} with public key \n{self.key}."
     
 
 
@@ -119,11 +117,12 @@ class Connection:
             self.enc_key = ecies.encrypt('0x' + base64.b64decode(self.Pi).hex(), self.clear_message)
             self.frame = self.encaps_frame("key_establishment", self.enc_key)
             for j in range(i)[::-1]:
-                self.clear_message = self.encaps_message(self.interm[j].ip, self.frame)
+                next = {'ip': self.interm[j].ip, 'port': self.interm[j].port}
+                self.clear_message = self.encaps_message(pickle.dumps(next), self.frame)
                 self.enc_key = encrypt(self.clear_message, self.sending_keys[j])
                 self.frame = self.encaps_frame("relay", self.enc_key)
             # l'envoyer au destinataire
-            send_message(self.interm[0].ip, 9050, self.frame)
+            send_message(self.interm[0].ip, self.interm[0].port, self.frame)
 
 
             # faire pareil avec les clés de déchiffrement au retour            
@@ -136,11 +135,12 @@ class Connection:
             self.enc_key = ecies.encrypt('0x' + base64.b64decode(self.Pi).hex(), self.clear_message)
             self.frame = self.encaps_frame("key_establishment", self.enc_key)
             for j in range(i)[::-1]:
-                self.clear_message = self.encaps_message(self.interm[j].ip, self.frame)
+                next = {'ip': self.interm[j].ip, 'port': self.interm[j].port}
+                self.clear_message = self.encaps_message(pickle.dumps(next), self.frame)
                 self.enc_key = encrypt(self.clear_message, self.receiving_keys[j])
                 self.frame = self.encaps_frame("relay", self.enc_key)
 
-            send_message(self.interm[0].ip, 9050, self.frame)
+            send_message(self.interm[0].ip, self.interm[0].port, self.frame)
         
 
         # faire pareil avec la clé du noeud destinataire
@@ -149,11 +149,12 @@ class Connection:
         self.enc_key = ecies.encrypt('0x' + base64.b64decode(self.dest.key).hex(), self.clear_message)
         self.frame = self.encaps_frame("key_establishment", self.enc_key)
         for j in range(len(self.interm))[::-1]:
-            self.clear_message = self.encaps_message(self.interm[j].ip, self.frame)
+            next = {'ip': self.interm[j].ip, 'port': self.interm[j].port}
+            self.clear_message = self.encaps_message(pickle.dumps(next), self.frame)
             self.enc_key = encrypt(self.clear_message, self.sending_keys[j])
             self.frame = self.encaps_frame("relay", self.enc_key)
 
-        send_message(self.interm[0].ip, 9050, self.frame)
+        send_message(self.interm[0].ip, self.interm[0].port, self.frame)
 
 
         # envoyer toutes les clefs du retour au destinataire
@@ -163,11 +164,12 @@ class Connection:
             self.frame = self.encaps_frame("key_establishment", self.enc_key)
 
             for j in range(len(self.interm))[::-1]:
-                self.clear_message = self.encaps_message(self.interm[j].ip, self.frame)
+                next = {'ip': self.interm[j].ip, 'port': self.interm[j].port}
+                self.clear_message = self.encaps_message(pickle.dumps(next), self.frame)
                 self.enc_key = encrypt(self.clear_message, self.sending_keys[j])
                 self.frame = self.encaps_frame("relay", self.enc_key)
 
-            send_message(self.interm[0].ip, 9050, self.frame)
+            send_message(self.interm[0].ip, self.interm[0].port, self.frame)
 
         # for debug purposes
         print(self.sending_keys)
