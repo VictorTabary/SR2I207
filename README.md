@@ -17,6 +17,7 @@ https://community.torproject.org/onion-services/overview/
 
 ## Specs techniques
 ### Circuit chiffré:
+Courbe secp256k1
   - signature: ECDSA
   - chiffrement: AES256
-  - échange de clefs: ECDSA
+  - échange de clefs: ECIES
