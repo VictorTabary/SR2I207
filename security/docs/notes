@@ -29,7 +29,6 @@ https://stackoverflow.com/questions/34653875/python-how-to-send-data-over-tcp
 
 
 Pour signer :
-
 	from secp256k1 import PrivateKey
 	key = PrivateKey()
 
@@ -37,29 +36,27 @@ Pour signer :
 
 
 Pour chiffrer avec ECIES :
-
 	from ecies import encrypt
 	encrypt('0x' + key.pubkey.serialize().hex(), b'bygbybiu')
 
 
-Pour déchiffrer avec ECIES et récupérer la clef AES :
-
+Pour déchiffrer avec ECIES et récupérer la clé AES :
 	decrypt('0x'+key.serialize(), base64.b64decode(c))
 
 
-Pour exporter la clef publique :
-
+Pour exporter la clé publique :
 	base64.b64encode(key.pubkey.serialize())
 
 
-Pendant l'établissement des clefs:
- - à destination de 1: 
-		Base64(ECIES(Pickle({I1, K1})))
- - à destination de 2:
-		Base64(AES(Pickle({I2, Base64(ECIES(Pickle({I2, K2})))}), K1))
- - à destination de 3:
-		Base64(AES(Pickle({I2, Base64(AES(Pickle({I3, Base64(ECIES(Pickle({I3, K3})))})), K2)}), K1))
- - à destination de Noeud au bout:
-		Base64(AES(Pickle({I2, Base64(AES(Pickle({I3, Base64(AES(Pickle({N2, Base64(ECIES(Pickle({N2, K})))})), K3)})), K2)}), K1))
-(c'est marrant)
+Trame pour la distribution des clés:
+	{'action': 'key_establishment', 'enc_message': SOME_ENCRYPTED_MESSAGE}
+	le message:
+	{'dest': DESTINATAIRE, 'm': LA CLE}
 
+	Différents cas:
+		- noeud du milieu dans la connexion :
+			reçoit la clé pour l'aller : 		DESTINATAIRE := "to"
+			reçoit la clé pour le retour : 		DESTINATAIRE := "{addresse du prochain noeud}"
+		- pour le dernier noeud de la connexion :
+			reçoit sa clé :						DESTINATAIRE := "destination"
+			reçoit les clés pour le retour : 	DESTINATAIRE := "node_{numéro du noeud dans la connexion}"
