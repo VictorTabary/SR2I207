@@ -70,5 +70,6 @@ Trame pour les relais:
 
 
 PROBLEMES A RESOUDRE:
+	- procédure pour fermer les connexions entre les noeuds
 	- ya moyen que ça soit pas les bonnes adresses à chaque fois dans les messages
 	- comment on récupère l'adresse du prochain noeud dans la connexion? pour l'instant: donnée au début avec les clefs (possiblement erreurs de port)

@@ -11,6 +11,9 @@ from secp256k1 import PrivateKey
 def send_message(s, message):
     try:
         s.send(message + b'\n')
+        while s.recv(1024) != b'ACK':
+            print('tjrs pas')
+            s.send(message + b'\n')
     except:
         print("Host down")
 
@@ -36,13 +39,17 @@ class NodeServer:
         from_addr, to_addr = {}, {}
         sock = ''
         EXTREMITY = False
+
+        # utilisés seulement si extrémité
+        receiving_keys = []
+        nodes = []
         while True:
             try:
                 data = conn.recv(2048)
                 if data:
                     frame = pickle.loads(data)
                     print(frame)
-                    if frame["action"] == "key_establishment" and not EXTREMITY:
+                    if frame["action"] == "key_establishment" and EXTREMITY == False:
                         message = pickle.loads(ecies.decrypt(self.privkey, frame["enc_message"]))
                         #print(message)
                         dest = message['dest']                      
@@ -56,7 +63,6 @@ class NodeServer:
                             aes_node_key = message['m']
                             from_addr = {'ip': addr[0], 'port': addr[1]}
                             print("\nCLE DU NOEUD:", aes_node_key, '\n')
-                            print("je suis une extrémité de la connexion (mais je ne suis pas implémenté pour le moment)")
                         
                         else:
                             aes_key_back = message['m']
@@ -68,10 +74,13 @@ class NodeServer:
                                 print("Can't contact the next node")
                             print("\nCLE RETOUR:", aes_key_back, '\n')
                     
-                    elif EXTREMITY:
+                    elif EXTREMITY and frame["action"] == "key_establishment":
                         message = pickle.loads(decrypt(frame["enc_message"], aes_node_key))
-                        dest = message['dest']
-                        print("je suis une extrémité de la connexion (mais je ne suis pas implémenté pour le moment)\n", message['m'])
+                        receiving_keys.append(message['m'])
+                        nodes.append(message['dest'])
+
+                        print('\n', receiving_keys, nodes)
+                        print("je suis une extrémité de la connexion (mais je ne suis pas implémenté pour le moment)\n")
                     
 
                     # mettre des headers "relay_to" et "relay_from" pour savoir avec quelle clé déchiffrer le paquet
@@ -80,10 +89,14 @@ class NodeServer:
                         message = pickle.loads(decr_message)
                         send_message(sock, message['m'])
 
+
+                    conn.send(b"ACK")
+
             except socket.error: 
                 print(f"An error occured in the connection from {addr}")
                 break
     
+
     def start(self):
         # penser à se déclarer dans la public-relay-list souvent (toutes les 2 minutes?)
         self.host = ''        # Symbolic name meaning all available interfaces   
