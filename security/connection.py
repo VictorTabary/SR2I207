@@ -42,7 +42,6 @@ class NodeServer:
 
         # utilisés seulement si extrémité
         receiving_keys = []
-        nodes = []
         while True:
             try:
                 data = conn.recv(2048)
@@ -77,9 +76,8 @@ class NodeServer:
                     elif EXTREMITY and frame["action"] == "key_establishment":
                         message = pickle.loads(decrypt(frame["enc_message"], aes_node_key))
                         receiving_keys.append(message['m'])
-                        nodes.append(message['dest'])
 
-                        print('\n', receiving_keys, nodes)
+                        print('\n', receiving_keys)
                         print("je suis une extrémité de la connexion (mais je ne suis pas implémenté pour le moment)\n")
                     
 
@@ -206,7 +204,7 @@ class Connection:
             self.frame = self.encaps_frame("key_establishment", self.enc_key)
 
             for j in range(len(self.interm))[::-1]:
-                next = {'ip': self.interm[j].ip, 'port': self.interm[j].port}
+                next = {'ip': "back", 'port': 0}
                 self.clear_message = self.encaps_message(next, self.frame)
                 self.enc_key = encrypt(self.clear_message, self.sending_keys[j])
                 self.frame = self.encaps_frame("relay_to", self.enc_key)

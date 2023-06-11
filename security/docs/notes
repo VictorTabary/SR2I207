@@ -26,6 +26,7 @@ https://github.com/ecies/py
 https://pypi.org/project/secp256k1/
 https://www.quickprogrammingtips.com/python/aes-256-encryption-and-decryption-in-python.html
 https://stackoverflow.com/questions/34653875/python-how-to-send-data-over-tcp
+https://github.com/Attacks-on-Tor/Attacks-on-Tor
 
 
 Pour signer :
@@ -59,7 +60,7 @@ Trame pour la distribution des clés:
 			reçoit la clé pour le retour : 		DESTINATAIRE := {"ip": addresse du prochain noeud, "port": port du prochain noeud }
 		- pour le dernier noeud de la connexion :
 			reçoit sa clé :						DESTINATAIRE := {"ip": "destination", "port": 0}
-			reçoit les clés pour le retour : 	DESTINATAIRE := {"ip": addresse du noeud, "port": port du noeud}
+			reçoit les clés pour le retour : 	DESTINATAIRE := {"ip": "back", "port": 0}
 
 Trame pour les relais:
 	{'action': 'relay_to' ou 'relay_from', 'enc_message': SOME_ENCRYPTED_MESSAGE}
@@ -73,3 +74,8 @@ PROBLEMES A RESOUDRE:
 	- procédure pour fermer les connexions entre les noeuds
 	- ya moyen que ça soit pas les bonnes adresses à chaque fois dans les messages
 	- comment on récupère l'adresse du prochain noeud dans la connexion? pour l'instant: donnée au début avec les clefs (possiblement erreurs de port)
+
+
+FAILLES POSSIBLES:
+	- taille des paquets
+	- assez de relais contrôlés
