@@ -17,6 +17,7 @@ class NodeServer:
         #self.pubkey = self.key.pubkey.serialize()   # pas hexa
         self.privkey = base64.b64decode(b'AQcx++axCPTh3xOmYC8IzUSrrgynvVarDp+2fZj/wf4=').hex()
         self.pubkey = base64.b64decode(b'AwuTgwUZ6EezzlmP9LOuh6d8z9waqucFv09rSUYq0slS')
+        self.socks = []
     
     def __str__(self):
         return f"Node at address {self.ip} with public key \n{self.key}."
@@ -58,6 +59,7 @@ class NodeServer:
                             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                             try:
                                 sock.connect((to_addr['ip'], to_addr['port']))
+                                self.socks.append(sock)
                             except:
                                 print("Can't contact the next node")
                             print("\nCLE RETOUR:", aes_key_back, '\n')
@@ -95,6 +97,11 @@ class NodeServer:
             self.t = Thread(target=self.handle_request, args=(conn, addr))
             self.t.start()
             #self.t.run()
+    
+    def close(self):
+        self.s.close()
+        for s in self.socks:
+            s.close()
 
 
 
