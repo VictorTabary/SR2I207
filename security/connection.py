@@ -9,7 +9,6 @@ from secp256k1 import PrivateKey
 
 
 def send_message(s, message):
-    print(len(message))
     try:
         s.send(message + b'\n')
     except:
@@ -39,7 +38,7 @@ class NodeServer:
         EXTREMITY = False
         while True:
             try:
-                data = conn.recv(1024)
+                data = conn.recv(2048)
                 if data:
                     frame = pickle.loads(data)
                     print(frame)
@@ -50,13 +49,13 @@ class NodeServer:
                         if dest['ip'] == 'to':
                             aes_key_to = message['m']
                             from_addr = {'ip': addr[0], 'port': addr[1]}
-                            print("\nCLE ALLER:", aes_key_to, '\nRECU DE:', from_addr, '\n')
+                            print("\nCLE ALLER:", aes_key_to, '\n')
 
                         elif dest['ip'] == "destination":
                             EXTREMITY = True    # pour gérer le cas spécial où on est extrémité de la connexion
                             aes_node_key = message['m']
                             from_addr = {'ip': addr[0], 'port': addr[1]}
-                            print("\nCLE DU NOEUD:", aes_node_key, '\nRECU DE:', from_addr, '\n')
+                            print("\nCLE DU NOEUD:", aes_node_key, '\n')
                             print("je suis une extrémité de la connexion (mais je ne suis pas implémenté pour le moment)")
                         
                         else:
@@ -67,7 +66,7 @@ class NodeServer:
                                 sock.connect((to_addr['ip'], to_addr['port']))
                             except:
                                 print("Can't contact the next node")
-                            print("\nCLE RETOUR:", aes_key_back, '\nRECU DE:', to_addr, '\n')
+                            print("\nCLE RETOUR:", aes_key_back, '\n')
                     
                     elif EXTREMITY:
                         message = pickle.loads(decrypt(frame["enc_message"], aes_node_key))
@@ -79,8 +78,6 @@ class NodeServer:
                     elif frame["action"] == "relay_to":
                         decr_message = decrypt(frame["enc_message"], aes_key_to)
                         message = pickle.loads(decr_message)
-                        print(message, message['dest'])
-
                         send_message(sock, message['m'])
 
             except socket.error: 
@@ -131,8 +128,8 @@ class Connection:
     def encaps_message(self, addr, message):
         return pickle.dumps({'dest': addr, 'm': message})
     
-    def encaps_frame(self, action, enc_dest, enc_message):
-        return pickle.dumps({'action': action, 'enc_dest': enc_dest, 'enc_message': enc_message})
+    def encaps_frame(self, action, enc_message):
+        return pickle.dumps({'action': action, 'enc_message': enc_message})
 
     def establish_conn(self):
         for i in range(len(self.interm)):
@@ -142,9 +139,8 @@ class Connection:
             self.sending_keys.append(self.priv_aes_key)
             # la chiffrer avec la clé publique ECDSA et l'encapsuler pour l'envoyer
             next = {'ip': 'to', 'port': 0}
-            #self.clear_message = self.encaps_message(next, self.priv_aes_key)
-            self.enc_key = ecies.encrypt('0x' + base64.b64decode(self.Pi).hex(), self.priv_aes_key)
-            self.enc_dest = ecies.encrypt('0x' + base64.b64decode(self.Pi).hex(), next)
+            self.clear_message = self.encaps_message(next, self.priv_aes_key)
+            self.enc_key = ecies.encrypt('0x' + base64.b64decode(self.Pi).hex(), self.clear_message)
             self.frame = self.encaps_frame("key_establishment", self.enc_key)
             for j in range(i)[::-1]:
                 next = {'ip': self.interm[j].ip, 'port': self.interm[j].port}
@@ -168,7 +164,7 @@ class Connection:
             for j in range(i)[::-1]:
                 next = {'ip': self.interm[j].ip, 'port': self.interm[j].port}
                 self.clear_message = self.encaps_message(next, self.frame)
-                self.enc_key = encrypt(self.clear_message, self.receiving_keys[j])
+                self.enc_key = encrypt(self.clear_message, self.sending_keys[j])
                 self.frame = self.encaps_frame("relay_to", self.enc_key)
 
             send_message(self.s, self.frame)
