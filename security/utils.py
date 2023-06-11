@@ -33,3 +33,12 @@ def decrypt(enc, private_key):
 
 def service_name(key):
     return base64.b32encode(hashlib.sha1(key).digest()).decode().lower()
+
+def send_message(s, message):
+    try:
+        s.send(message + b'\n')
+        while s.recv(1024) != b'ACK':
+            print('tjrs pas')
+            s.send(message + b'\n')
+    except:
+        print("Host down")

@@ -8,17 +8,6 @@ from secp256k1 import PrivateKey
 
 
 
-def send_message(s, message):
-    try:
-        s.send(message + b'\n')
-        while s.recv(1024) != b'ACK':
-            print('tjrs pas')
-            s.send(message + b'\n')
-    except:
-        print("Host down")
-
-
-
 class NodeServer:
     def __init__(self, port):
         self.port = port
@@ -136,11 +125,30 @@ class Connection:
 
         self.conn = self.establish_conn()
     
+
     def encaps_message(self, addr, message):
         return pickle.dumps({'dest': addr, 'm': message})
     
+
     def encaps_frame(self, action, enc_message):
         return pickle.dumps({'action': action, 'enc_message': enc_message})
+    
+
+    def build_send_message(self, action, cipher, cipher_key, next, message, node_id):
+        self.clear_message = self.encaps_message(next, message)
+        if cipher == 'ECIES':
+            self.enc_key = ecies.encrypt('0x' + base64.b64decode(cipher_key).hex(), self.clear_message)
+        else:
+            self.enc_key = encrypt(self.clear_message, cipher_key)
+        self.frame = self.encaps_frame(action, self.enc_key)
+        for j in range(node_id)[::-1]:
+            next = {'ip': self.interm[j].ip, 'port': self.interm[j].port}
+            self.clear_message = self.encaps_message(next, self.frame)
+            self.enc_key = encrypt(self.clear_message, self.sending_keys[j])
+            self.frame = self.encaps_frame("relay_to", self.enc_key)
+        # l'envoyer au destinataire
+        send_message(self.s, self.frame)
+
 
     def establish_conn(self):
         for i in range(len(self.interm)):
@@ -148,19 +156,8 @@ class Connection:
             # choisir la clé AES256 et l'enregistrer
             self.priv_aes_key = get_private_key()
             self.sending_keys.append(self.priv_aes_key)
-            # la chiffrer avec la clé publique ECDSA et l'encapsuler pour l'envoyer
             next = {'ip': 'to', 'port': 0}
-            self.clear_message = self.encaps_message(next, self.priv_aes_key)
-            self.enc_key = ecies.encrypt('0x' + base64.b64decode(self.Pi).hex(), self.clear_message)
-            self.frame = self.encaps_frame("key_establishment", self.enc_key)
-            for j in range(i)[::-1]:
-                next = {'ip': self.interm[j].ip, 'port': self.interm[j].port}
-                self.clear_message = self.encaps_message(next, self.frame)
-                self.enc_key = encrypt(self.clear_message, self.sending_keys[j])
-                self.frame = self.encaps_frame("relay_to", self.enc_key)
-            # l'envoyer au destinataire
-            send_message(self.s, self.frame)
-
+            self.build_send_message("key_establishment", "ECIES", self.Pi, next, self.priv_aes_key, i)
 
             # faire pareil avec les clés de déchiffrement au retour            
             self.priv_aes_key = get_private_key()
@@ -169,47 +166,18 @@ class Connection:
                 next = {'ip': self.interm[i+1].ip, 'port': self.interm[i+1].port}
             else:
                 next = {'ip': self.dest.ip, 'port': self.dest.port}
-            self.clear_message = self.encaps_message(next, self.priv_aes_key)
-            self.enc_key = ecies.encrypt('0x' + base64.b64decode(self.Pi).hex(), self.clear_message)
-            self.frame = self.encaps_frame("key_establishment", self.enc_key)
-            for j in range(i)[::-1]:
-                next = {'ip': self.interm[j].ip, 'port': self.interm[j].port}
-                self.clear_message = self.encaps_message(next, self.frame)
-                self.enc_key = encrypt(self.clear_message, self.sending_keys[j])
-                self.frame = self.encaps_frame("relay_to", self.enc_key)
-
-            send_message(self.s, self.frame)
+            self.build_send_message("key_establishment", "ECIES", self.Pi, next, self.priv_aes_key, i)
         
-
         # faire pareil avec la clé du noeud destinataire
         self.priv_node_key = get_private_key()
         next = {'ip': 'destination', 'port': 0}
-        self.clear_message = self.encaps_message(next, self.priv_node_key)
-        self.enc_key = ecies.encrypt('0x' + base64.b64decode(self.dest.key).hex(), self.clear_message)
-        self.frame = self.encaps_frame("key_establishment", self.enc_key)
-        for j in range(len(self.interm))[::-1]:
-            next = {'ip': self.interm[j].ip, 'port': self.interm[j].port}
-            self.clear_message = self.encaps_message(next, self.frame)
-            self.enc_key = encrypt(self.clear_message, self.sending_keys[j])
-            self.frame = self.encaps_frame("relay_to", self.enc_key)
-
-        send_message(self.s, self.frame)
-
+        self.build_send_message("key_establishment", "ECIES", self.dest.key, next, self.priv_node_key, len(self.interm))
 
         # envoyer toutes les clefs du retour au destinataire
         for i in range(len(self.receiving_keys)):
             next = {'ip': self.interm[i].ip, 'port': self.interm[i].port}
-            self.clear_message = self.encaps_message(next, self.receiving_keys[i])
-            self.enc_key = encrypt(self.clear_message, self.priv_node_key)
-            self.frame = self.encaps_frame("key_establishment", self.enc_key)
-
-            for j in range(len(self.interm))[::-1]:
-                next = {'ip': "back", 'port': 0}
-                self.clear_message = self.encaps_message(next, self.frame)
-                self.enc_key = encrypt(self.clear_message, self.sending_keys[j])
-                self.frame = self.encaps_frame("relay_to", self.enc_key)
-
-            send_message(self.s, self.frame)
+            self.build_send_message("key_establishment", "AES", self.priv_node_key, next, self.receiving_keys[i], len(self.interm))
+        
 
         # for debug purposes
         print(self.sending_keys)
@@ -217,5 +185,3 @@ class Connection:
         print(self.priv_node_key)
 
         self.s.close()
-
-
