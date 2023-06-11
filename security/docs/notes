@@ -55,8 +55,20 @@ Trame pour la distribution des clés:
 
 	Différents cas:
 		- noeud du milieu dans la connexion :
-			reçoit la clé pour l'aller : 		DESTINATAIRE := "to"
-			reçoit la clé pour le retour : 		DESTINATAIRE := "{addresse du prochain noeud}"
+			reçoit la clé pour l'aller : 		DESTINATAIRE := {"ip": "to", "port": 0}
+			reçoit la clé pour le retour : 		DESTINATAIRE := {"ip": addresse du prochain noeud, "port": port du prochain noeud }
 		- pour le dernier noeud de la connexion :
-			reçoit sa clé :						DESTINATAIRE := "destination"
-			reçoit les clés pour le retour : 	DESTINATAIRE := "node_{numéro du noeud dans la connexion}"
+			reçoit sa clé :						DESTINATAIRE := {"ip": "destination", "port": 0}
+			reçoit les clés pour le retour : 	DESTINATAIRE := {"ip": addresse du noeud, "port": port du noeud}
+
+Trame pour les relais:
+	{'action': 'relay_to' ou 'relay_from', 'enc_message': SOME_ENCRYPTED_MESSAGE}
+	le message:
+	{'dest': "{addresse du prochain noeud}", 'm': LE MESSAGE}
+
+
+
+
+PROBLEMES A RESOUDRE:
+	- ya moyen que ça soit pas les bonnes adresses à chaque fois dans les messages
+	- comment on récupère l'adresse du prochain noeud dans la connexion? pour l'instant: donnée au début avec les clefs (possiblement erreurs de port)
