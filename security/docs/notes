@@ -52,18 +52,18 @@ Pour exporter la clé publique :
 Trame pour la distribution des clés:
 	{'action': 'key_establishment', 'enc_message': SOME_ENCRYPTED_MESSAGE}
 	le message:
-	{'dest': DESTINATAIRE, 'm': LA CLE}
+	{'info': INFO, 'm': LA CLE}
 
 	Différents cas:
 		- noeud du milieu dans la connexion :
-			reçoit la clé pour l'aller : 		DESTINATAIRE := {"ip": "to", "port": 0}
-			reçoit la clé pour le retour : 		DESTINATAIRE := {"ip": addresse du prochain noeud, "port": port du prochain noeud }
+			reçoit la clé pour l'aller : 		INFO := "aller"
+			reçoit la clé pour le retour : 		INFO := "retour,IP:PORT"
 		- pour le dernier noeud de la connexion :
-			reçoit sa clé :						DESTINATAIRE := {"ip": "destination", "port": 0}
-			reçoit les clés pour le retour : 	DESTINATAIRE := {"ip": "back", "port": 0}
+			reçoit sa clé :						INFO := "destination"
+			reçoit les clés pour le retour : 	INFO := "clefs_retour"
 
 Trame pour les relais:
-	{'action': 'relay_to' ou 'relay_from', 'enc_message': SOME_ENCRYPTED_MESSAGE}
+	{'action': 'relay', 'enc_message': SOME_ENCRYPTED_MESSAGE}
 	le message:
 	{'dest': "{addresse du prochain noeud}", 'm': LE MESSAGE}
 

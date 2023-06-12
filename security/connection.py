@@ -41,24 +41,24 @@ class NodeServer:
                     if frame["action"] == "key_establishment" and EXTREMITY == False:
                         message = pickle.loads(ecies.decrypt(self.privkey, frame["enc_message"]))
                         #print(message)
-                        dest = message['dest']                      
-                        if dest['ip'] == 'to':
+                        dest = message['info']                      
+                        if dest == 'aller':  # cas d'un noeud intermédiaire et de clef aller
                             aes_key_to = message['m']
-                            from_addr = {'ip': addr[0], 'port': addr[1]}
+                            from_addr = addr
                             print("\nCLE ALLER:", aes_key_to, '\n')
 
-                        elif dest['ip'] == "destination":
+                        elif dest == "destination":
                             EXTREMITY = True    # pour gérer le cas spécial où on est extrémité de la connexion
                             aes_node_key = message['m']
-                            from_addr = {'ip': addr[0], 'port': addr[1]}
+                            from_addr = addr
                             print("\nCLE DU NOEUD:", aes_node_key, '\n')
                         
-                        else:
+                        else: # cas d'un noeud intermédiaire et de clef retour
                             aes_key_back = message['m']
-                            to_addr = message['dest']
+                            to_addr = dest.split(',')[1].split(':')
                             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                             try:
-                                sock.connect((to_addr['ip'], to_addr['port']))
+                                sock.connect((to_addr[0], int(to_addr[1])))
                                 self.socks.append(sock)
                             except:
                                 print("Can't contact the next node")
@@ -133,7 +133,7 @@ class Connection:
     
 
     def encaps_message(self, addr, message):
-        return pickle.dumps({'dest': addr, 'm': message})
+        return pickle.dumps({'info': addr, 'm': message})
     
 
     def encaps_frame(self, action, enc_message):
@@ -162,26 +162,27 @@ class Connection:
             # choisir la clé AES256 et l'enregistrer
             self.priv_aes_key = get_private_key()
             self.sending_keys.append(self.priv_aes_key)
-            next = {'ip': 'to', 'port': 0}
+            next = "aller"
             self.build_send_message("key_establishment", "ECIES", self.Pi, next, self.priv_aes_key, i)
 
             # faire pareil avec les clés de déchiffrement au retour            
             self.priv_aes_key = get_private_key()
             self.receiving_keys.append(self.priv_aes_key)
+            next = "retour,"
             if i < len(self.interm)-1:
-                next = {'ip': self.interm[i+1].ip, 'port': self.interm[i+1].port}
+                next += self.interm[i+1].ip + ":" + str(self.interm[i+1].port)
             else:
-                next = {'ip': self.dest.ip, 'port': self.dest.port}
+                next += self.dest.ip + ":" + str(self.dest.port)
             self.build_send_message("key_establishment", "ECIES", self.Pi, next, self.priv_aes_key, i)
         
         # faire pareil avec la clé du noeud destinataire
         self.priv_node_key = get_private_key()
-        next = {'ip': 'destination', 'port': 0}
+        next = "destination"
         self.build_send_message("key_establishment", "ECIES", self.dest.key, next, self.priv_node_key, len(self.interm))
 
         # envoyer toutes les clefs du retour au destinataire
         for i in range(len(self.receiving_keys)):
-            next = {'ip': self.interm[i].ip, 'port': self.interm[i].port}
+            next = "clefs_retour"
             self.build_send_message("key_establishment", "AES", self.priv_node_key, next, self.receiving_keys[i], len(self.interm))
         
 
