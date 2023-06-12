@@ -4,6 +4,7 @@ from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Cipher import AES
 from Crypto import Random
 import base64
+import hashlib
 
 
 PASSWORD_SIZE = 15
@@ -29,3 +30,6 @@ def decrypt(enc, private_key):
     iv = enc[:16]
     cipher = AES.new(private_key, AES.MODE_CBC, iv)
     return unpad(cipher.decrypt(enc[16:]))
+
+def service_name(key):
+    return base64.b32encode(hashlib.sha1(key).digest()).decode().lower()
