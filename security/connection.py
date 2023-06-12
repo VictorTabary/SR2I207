@@ -72,8 +72,7 @@ class NodeServer:
                         print("je suis une extrémité de la connexion (mais je ne suis pas implémenté pour le moment)\n")
                     
 
-                    # mettre des headers "relay_to" et "relay_from" pour savoir avec quelle clé déchiffrer le paquet
-                    elif frame["action"] == "relay_to":
+                    elif frame["action"] == "relay":
                         decr_message = decrypt(frame["enc_message"], aes_key_to)
                         message = pickle.loads(decr_message)
                         send_message(sock, message['m'])
@@ -152,7 +151,7 @@ class Connection:
             next = {'ip': self.interm[j].ip, 'port': self.interm[j].port}
             self.clear_message = self.encaps_message(next, self.frame)
             self.enc_key = encrypt(self.clear_message, self.sending_keys[j])
-            self.frame = self.encaps_frame("relay_to", self.enc_key)
+            self.frame = self.encaps_frame("relay", self.enc_key)
         # l'envoyer au destinataire
         send_message(self.s, self.frame)
 

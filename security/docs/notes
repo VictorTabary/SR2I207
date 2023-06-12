@@ -71,7 +71,6 @@ Trame pour les relais:
 
 
 PROBLEMES A RESOUDRE:
-    - juste mettre "relay" (de toute façon 2 sockets sont ouverts donc on sait déjà à qui parler)
     - changer les trames pour ne laisser le dest que quand "key_establishment"
 	- procédure pour fermer les connexions entre les noeuds
 	- ya moyen que ça soit pas les bonnes adresses à chaque fois dans les messages
