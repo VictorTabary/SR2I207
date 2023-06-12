@@ -74,8 +74,7 @@ class NodeServer:
 
                     elif frame["action"] == "relay":
                         decr_message = decrypt(frame["enc_message"], aes_key_to)
-                        message = pickle.loads(decr_message)
-                        send_message(sock, message['m'])
+                        send_message(sock, decr_message)
 
 
                     conn.send(b"ACK")
@@ -130,27 +129,21 @@ class Connection:
             print('Host seems down')
 
         self.conn = self.establish_conn()
-    
-
-    def encaps_message(self, addr, message):
-        return pickle.dumps({'info': addr, 'm': message})
-    
+        
 
     def encaps_frame(self, action, enc_message):
         return pickle.dumps({'action': action, 'enc_message': enc_message})
     
 
     def build_send_message(self, action, cipher, cipher_key, next, message, node_id):
-        self.clear_message = self.encaps_message(next, message)
+        self.clear_message = pickle.dumps({'info': next, 'm': message})
         if cipher == 'ECIES':
             self.enc_key = ecies.encrypt('0x' + base64.b64decode(cipher_key).hex(), self.clear_message)
         else:
             self.enc_key = encrypt(self.clear_message, cipher_key)
         self.frame = self.encaps_frame(action, self.enc_key)
         for j in range(node_id)[::-1]:
-            next = {'ip': self.interm[j].ip, 'port': self.interm[j].port}
-            self.clear_message = self.encaps_message(next, self.frame)
-            self.enc_key = encrypt(self.clear_message, self.sending_keys[j])
+            self.enc_key = encrypt(self.frame, self.sending_keys[j])
             self.frame = self.encaps_frame("relay", self.enc_key)
         # l'envoyer au destinataire
         send_message(self.s, self.frame)

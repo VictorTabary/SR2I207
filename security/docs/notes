@@ -64,17 +64,12 @@ Trame pour la distribution des clés:
 
 Trame pour les relais:
 	{'action': 'relay', 'enc_message': SOME_ENCRYPTED_MESSAGE}
-	le message:
-	{'dest': "{addresse du prochain noeud}", 'm': LE MESSAGE}
-
 
 
 
 PROBLEMES A RESOUDRE:
-    - changer les trames pour ne laisser le dest que quand "key_establishment"
 	- procédure pour fermer les connexions entre les noeuds
 	- ya moyen que ça soit pas les bonnes adresses à chaque fois dans les messages
-	- comment on récupère l'adresse du prochain noeud dans la connexion? pour l'instant: donnée au début avec les clefs (possiblement erreurs de port)
 
 
 FAILLES POSSIBLES:
