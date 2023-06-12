@@ -1,2 +1,3 @@
 eciespy
 pycryptodome
+secp256k1
