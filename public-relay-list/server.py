@@ -1,4 +1,4 @@
-# run : uvicorn server:app --reload
+# run : uvicorn server:app --reload --host 0.0.0.0 --port 80
 
 from typing import Union
 
