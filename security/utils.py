@@ -46,7 +46,9 @@ def send_message(s, message):
         for i in range(10):
             if s.recv(1024) != b'ACK':
                 s.send(message + b'\n')
+                print('Could not send the message')
             else:
+                #print('Message sent')
                 break
     except:
         print("Host down")

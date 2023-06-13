@@ -27,29 +27,33 @@ class NodeServer:
         self.stop_threads = True
         self.s.shutdown(socket.SHUT_RDWR)
         self.s.close()
-        print(self.socks)
+        #print(self.socks)
         for s in self.socks:
             s.shutdown(socket.SHUT_RDWR); s.close()
-    
+
+
     def handle_request(self, conn, addr):
         print('Connected by', addr)
+        self.socks.append(conn)
+
         aes_key_to, aes_key_back = b'', b''
         aes_node_key = b''
         from_addr, to_addr = {}, {}
         sock = ''
-        EXTREMITY = False
 
         # utilisés seulement si extrémité
+        EXTREMITY = False
         receiving_keys = []
+        nb_keys = 0
+        SET_UP = False
 
-        self.socks.append(conn)
         while True and self.stop_threads == False:
             try:
                 data = conn.recv(2048)
                 if data:
                     frame = pickle.loads(data)
                     print(frame)
-                    if frame["action"] == "key_establishment" and EXTREMITY == False:
+                    if frame["action"] == "key_establishment" and not EXTREMITY:
                         message = pickle.loads(ecies.decrypt(self.privkey, frame["enc_message"]))
                         #print(message)
                         dest = message['info']                      
@@ -58,7 +62,8 @@ class NodeServer:
                             from_addr = addr
                             print("\nCLE ALLER:", aes_key_to, '\n')
 
-                        elif dest == "destination":
+                        elif "destination" in dest:
+                            nb_keys = int(dest.split(',')[1])
                             EXTREMITY = True    # pour gérer le cas spécial où on est extrémité de la connexion
                             aes_node_key = message['m']
                             from_addr = addr
@@ -75,21 +80,28 @@ class NodeServer:
                                 print("Can't contact the next node")
                             print("\nCLE RETOUR:", aes_key_back, '\n')
                     
-                    elif EXTREMITY and frame["action"] == "key_establishment":
+                    elif EXTREMITY and not SET_UP and frame["action"] == "key_establishment":
                         message = pickle.loads(decrypt(frame["enc_message"], aes_node_key))
                         receiving_keys.append(message['m'])
 
-                        print('\n', receiving_keys)
-                        print("je suis une extrémité de la connexion (mais je ne suis pas implémenté pour le moment)\n")
-                    
+                        if len(receiving_keys) == nb_keys:
+                            SET_UP = True
 
+                            #send_message(sock_back, b"hello")
+                            print('\n', receiving_keys)
+
+                            print("je suis une extrémité de la connexion (mais je ne suis pas implémenté pour le moment)\n")
+                            print("maintenant il faut continuer le programme monsieur svp")
+                    
+                    # pour le relai
                     elif frame["action"] == "relay":
                         decr_message = decrypt(frame["enc_message"], aes_key_to)
                         send_message(sock_to, decr_message)
 
                     conn.send(b"ACK")
 
-            except socket.error: 
+            except socket.error as e: 
+                print(e)
                 print(f"An error occured in the connection from {addr}")
                 break
     
@@ -100,14 +112,17 @@ class NodeServer:
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.bind((self.host, self.port))
         self.s.listen()
+
         while True:
             try:
                 conn, addr = self.s.accept()
-                self.t = Thread(target=self.handle_request, args=(conn, addr))
-                self.t.start()
+                t = Thread(target=self.handle_request, args=(conn, addr))
+                t.start()
             except:
                 self.close()
+                print("Socket is dead")
                 break
+
 
 
 
@@ -160,7 +175,7 @@ class Connection:
         
         # faire pareil avec la clé du noeud destinataire
         self.priv_node_key = get_private_key()
-        next = "destination"
+        next = "destination,"+str(len(self.interm))
         build_send_message(self.s, "key_establishment", "ECIES", self.dest.key, next, self.priv_node_key, self.sending_keys, len(self.interm))
 
         # envoyer toutes les clefs du retour au destinataire

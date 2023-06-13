@@ -59,7 +59,7 @@ Trame pour la distribution des clés:
 			reçoit la clé pour l'aller : 		INFO := "aller"
 			reçoit la clé pour le retour : 		INFO := "retour,IP:PORT"
 		- pour le dernier noeud de la connexion :
-			reçoit sa clé :						INFO := "destination"
+			reçoit sa clé :						INFO := "destination,{nb de noeuds intermédaires}"
 			reçoit les clés pour le retour : 	INFO := "clefs_retour"
 
 Trame pour les relais:
@@ -69,6 +69,7 @@ Trame pour les relais:
 
 PROBLEMES A RESOUDRE:
 	- procédure pour fermer les connexions entre les noeuds
+	- relai des messages dans l'autre sens (via les mêmes ports !)
 
 
 FAILLES POSSIBLES:
