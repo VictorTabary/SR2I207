@@ -18,9 +18,18 @@ class NodeServer:
         self.privkey = base64.b64decode(b'AQcx++axCPTh3xOmYC8IzUSrrgynvVarDp+2fZj/wf4=').hex()
         self.pubkey = base64.b64decode(b'AwuTgwUZ6EezzlmP9LOuh6d8z9waqucFv09rSUYq0slS')
         self.socks = []
+        self.stop_threads = False
     
     def __str__(self):
         return f"Node at address {self.ip} with public key \n{self.key}."
+    
+    def close(self):
+        self.stop_threads = True
+        self.s.shutdown(socket.SHUT_RDWR)
+        self.s.close()
+        print(self.socks)
+        for s in self.socks:
+            s.shutdown(socket.SHUT_RDWR); s.close()
     
     def handle_request(self, conn, addr):
         print('Connected by', addr)
@@ -32,7 +41,9 @@ class NodeServer:
 
         # utilisés seulement si extrémité
         receiving_keys = []
-        while True:
+
+        self.socks.append(conn)
+        while True and self.stop_threads == False:
             try:
                 data = conn.recv(2048)
                 if data:
@@ -56,10 +67,10 @@ class NodeServer:
                         else: # cas d'un noeud intermédiaire et de clef retour
                             aes_key_back = message['m']
                             to_addr = dest.split(',')[1].split(':')
-                            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            sock_to = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                             try:
-                                sock.connect((to_addr[0], int(to_addr[1])))
-                                self.socks.append(sock)
+                                sock_to.connect((to_addr[0], int(to_addr[1])))
+                                self.socks.append(sock_to)
                             except:
                                 print("Can't contact the next node")
                             print("\nCLE RETOUR:", aes_key_back, '\n')
@@ -74,8 +85,7 @@ class NodeServer:
 
                     elif frame["action"] == "relay":
                         decr_message = decrypt(frame["enc_message"], aes_key_to)
-                        send_message(sock, decr_message)
-
+                        send_message(sock_to, decr_message)
 
                     conn.send(b"ACK")
 
@@ -91,15 +101,13 @@ class NodeServer:
         self.s.bind((self.host, self.port))
         self.s.listen()
         while True:
-            conn, addr = self.s.accept()
-            self.t = Thread(target=self.handle_request, args=(conn, addr))
-            self.t.start()
-            #self.t.run()
-    
-    def close(self):
-        self.s.close()
-        for s in self.socks:
-            s.close()
+            try:
+                conn, addr = self.s.accept()
+                self.t = Thread(target=self.handle_request, args=(conn, addr))
+                self.t.start()
+            except:
+                self.close()
+                break
 
 
 
@@ -129,24 +137,6 @@ class Connection:
             print('Host seems down')
 
         self.conn = self.establish_conn()
-        
-
-    def encaps_frame(self, action, enc_message):
-        return pickle.dumps({'action': action, 'enc_message': enc_message})
-    
-
-    def build_send_message(self, action, cipher, cipher_key, next, message, node_id):
-        self.clear_message = pickle.dumps({'info': next, 'm': message})
-        if cipher == 'ECIES':
-            self.enc_key = ecies.encrypt('0x' + base64.b64decode(cipher_key).hex(), self.clear_message)
-        else:
-            self.enc_key = encrypt(self.clear_message, cipher_key)
-        self.frame = self.encaps_frame(action, self.enc_key)
-        for j in range(node_id)[::-1]:
-            self.enc_key = encrypt(self.frame, self.sending_keys[j])
-            self.frame = self.encaps_frame("relay", self.enc_key)
-        # l'envoyer au destinataire
-        send_message(self.s, self.frame)
 
 
     def establish_conn(self):
@@ -156,7 +146,7 @@ class Connection:
             self.priv_aes_key = get_private_key()
             self.sending_keys.append(self.priv_aes_key)
             next = "aller"
-            self.build_send_message("key_establishment", "ECIES", self.Pi, next, self.priv_aes_key, i)
+            build_send_message(self.s, "key_establishment", "ECIES", self.Pi, next, self.priv_aes_key, self.sending_keys, i)
 
             # faire pareil avec les clés de déchiffrement au retour            
             self.priv_aes_key = get_private_key()
@@ -166,17 +156,17 @@ class Connection:
                 next += self.interm[i+1].ip + ":" + str(self.interm[i+1].port)
             else:
                 next += self.dest.ip + ":" + str(self.dest.port)
-            self.build_send_message("key_establishment", "ECIES", self.Pi, next, self.priv_aes_key, i)
+            build_send_message(self.s, "key_establishment", "ECIES", self.Pi, next, self.priv_aes_key, self.sending_keys, i)
         
         # faire pareil avec la clé du noeud destinataire
         self.priv_node_key = get_private_key()
         next = "destination"
-        self.build_send_message("key_establishment", "ECIES", self.dest.key, next, self.priv_node_key, len(self.interm))
+        build_send_message(self.s, "key_establishment", "ECIES", self.dest.key, next, self.priv_node_key, self.sending_keys, len(self.interm))
 
         # envoyer toutes les clefs du retour au destinataire
         for i in range(len(self.receiving_keys)):
             next = "clefs_retour"
-            self.build_send_message("key_establishment", "AES", self.priv_node_key, next, self.receiving_keys[i], len(self.interm))
+            build_send_message(self.s, "key_establishment", "AES", self.priv_node_key, next, self.receiving_keys[i], self.sending_keys, len(self.interm))
         
 
         # for debug purposes
