@@ -29,8 +29,8 @@ class RelayHandler:
         decr_message = decrypt(raw_message, self.circuit.aes_key_to)
         send_message(self.circuit.sock_to, decr_message)
 
-    def start_reverse_relay(self):
 
+    def start_reverse_relay(self):
         def handle_reverse():
             while True:
                 raw_data = self.circuit.sock_to.recv(PACKET_SIZE)
@@ -92,23 +92,16 @@ class CircuitNode:
                         message = pickle.loads(ecies.decrypt(self.server.privkey, raw_message))
 
                         dest = message['info']
-                        if dest == 'aller':  # cas d'un noeud intermédiaire et de clef aller
-                            self.aes_key_to = message['m']
+                        if dest[0] == 'aller':  # cas d'un noeud intermédiaire et de clef aller
+                            keys = pickle.loads(message['m'])
+
+                            self.aes_key_to = keys[0]
                             self.from_addr = self.addr
                             print("\nCLE ALLER:", self.aes_key_to, '\n')
 
-                        elif "destination" in dest:
-                            # On devient une extrémité
-                            nb_keys = int(dest.split(',')[1])
-                            EXTREMITY = True  # pour gérer le cas spécial où on est extrémité de la connexion
-                            self.messageHandler = ExtremityHandler(self)
-                            aes_node_key = message['m']
-                            self.from_addr = self.addr
-                            print("\nCLE DU NOEUD:", aes_node_key, '\n')
-
-                        else:  # cas d'un noeud intermédiaire et de clef retour
-                            aes_key_back = message['m']
-                            self.to_addr = dest.split(',')[1].split(':') # ip:port
+                            # cas d'un noeud intermédiaire et de clef retour
+                            aes_key_back = keys[1]
+                            self.to_addr = dest[1].split(',')[1].split(':') # ip:port
                             self.sock_to = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                             try:
                                 self.sock_to.connect((self.to_addr[0], int(self.to_addr[1])))
@@ -119,6 +112,16 @@ class CircuitNode:
                             except:
                                 print("Can't contact the next node")
                             print("\nCLE RETOUR:", aes_key_back, '\n')
+
+
+                        elif dest[0] == "destination":
+                            # On devient une extrémité
+                            nb_keys = int(dest[1])
+                            EXTREMITY = True  # pour gérer le cas spécial où on est extrémité de la connexion
+                            self.messageHandler = ExtremityHandler(self)
+                            aes_node_key = message['m']
+                            self.from_addr = self.addr
+                            print("\nCLE DU NOEUD:", aes_node_key, '\n')
 
                     # EXTREMITY
                     elif not isSetUp and frame["action"] == "key_establishment":

@@ -34,25 +34,21 @@ class ConnectionClient:
     def establish_conn(self):
         for i in range(len(self.interm)):
             self.Pi = self.interm[i].key
-            # choisir la clé AES256 et l'enregistrer
-            self.priv_aes_key = get_private_key()
-            self.sending_keys.append(self.priv_aes_key)
-            next = "aller"
-            build_send_message(self.s, "key_establishment", "ECIES", self.Pi, next, self.priv_aes_key, self.sending_keys, i)
-
-            # faire pareil avec les clés de déchiffrement au retour            
-            self.priv_aes_key = get_private_key()
-            self.receiving_keys.append(self.priv_aes_key)
-            next = "retour,"
+            # choisir les clés AES256 et les enregistrer
+            priv_aes_key_aller, priv_aes_key_retour = get_private_key(), get_private_key()
+            self.sending_keys.append(priv_aes_key_aller)
+            self.receiving_keys.append(priv_aes_key_retour)
+            info = ['aller', 'retour,']
             if i < len(self.interm)-1:
-                next += self.interm[i+1].ip + ":" + str(self.interm[i+1].port)
+                info[1] += self.interm[i+1].ip + ":" + str(self.interm[i+1].port)
             else:
-                next += self.dest.ip + ":" + str(self.dest.port)
-            build_send_message(self.s, "key_establishment", "ECIES", self.Pi, next, self.priv_aes_key, self.sending_keys, i)
+                info[1] += self.dest.ip + ":" + str(self.dest.port)
+            build_send_message(self.s, "key_establishment", "ECIES", self.Pi, info, pickle.dumps([priv_aes_key_aller, priv_aes_key_retour]), self.sending_keys, i)
+
         
         # faire pareil avec la clé du noeud destinataire
         self.priv_node_key = get_private_key()
-        next = "destination,"+str(len(self.interm))
+        next = ["destination", str(len(self.interm))]
         build_send_message(self.s, "key_establishment", "ECIES", self.dest.key, next, self.priv_node_key, self.sending_keys, len(self.interm))
 
         # envoyer toutes les clefs du retour au destinataire
