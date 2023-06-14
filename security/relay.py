@@ -12,12 +12,14 @@ ANNOUNCE_DELAY = 1 * 60  # seconds
 ANNOUNCE_URL = "http://localhost:8080"
 PACKET_SIZE = 2048
 
+
 class ExtremityHandler:
     def __init__(self, circuit):
         self.circuit = circuit
 
     def handle_message(self, raw_message):
         pass
+
 
 class RelayHandler:
     def __init__(self, circuit):
@@ -43,9 +45,7 @@ class RelayHandler:
 
 
 class CircuitNode:
-
     def __init__(self, conn, addr, server):
-
         self.messageHandler = None
         self.addr = addr
         self.server = server
@@ -59,7 +59,7 @@ class CircuitNode:
 
         # from/to à comprendre dans le sens de l'établissement de la connexion
         self.sock_from = conn
-        self.sock_to: socket.socket = None # utilisé uniquement si on est pas une extrémité
+        self.sock_to: socket.socket = None # utilisé uniquement si on n'est pas une extrémité
 
     def close(self):
         self.stop_threads = True
@@ -73,7 +73,6 @@ class CircuitNode:
         print('Connected by', self.addr)
 
         # utilisés seulement si extrémité
-
         aes_node_key = b''
         EXTREMITY = False
         nb_keys = 0
@@ -92,14 +91,15 @@ class CircuitNode:
                         message = pickle.loads(ecies.decrypt(self.server.privkey, raw_message))
 
                         dest = message['info']
-                        if dest[0] == 'aller':  # cas d'un noeud intermédiaire et de clef aller
+                        if dest[0] == 'aller':  # cas d'un noeud intermédiaire
+                            # clef aller
                             keys = pickle.loads(message['m'])
 
                             self.aes_key_to = keys[0]
                             self.from_addr = self.addr
-                            print("\nCLE ALLER:", self.aes_key_to, '\n')
+                            print("\nCLE ALLER:", self.aes_key_to)
 
-                            # cas d'un noeud intermédiaire et de clef retour
+                            # clef retour
                             aes_key_back = keys[1]
                             self.to_addr = dest[1].split(',')[1].split(':') # ip:port
                             self.sock_to = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -113,7 +113,6 @@ class CircuitNode:
                                 print("Can't contact the next node")
                             print("\nCLE RETOUR:", aes_key_back, '\n')
 
-
                         elif dest[0] == "destination":
                             # On devient une extrémité
                             nb_keys = int(dest[1])
@@ -126,17 +125,16 @@ class CircuitNode:
                     # EXTREMITY
                     elif not isSetUp and frame["action"] == "key_establishment":
                         message = pickle.loads(decrypt(raw_message, aes_node_key))
-                        receiving_keys.append(message['m'])
+                        receiving_keys = pickle.loads(message['m'])
 
-                        if len(receiving_keys) == nb_keys:
-                            isSetUp = True
+                        assert len(receiving_keys) == nb_keys
+                        isSetUp = True
 
-                            print('\n', receiving_keys)
-                            print("je suis une extrémité de la connexion (mais je ne suis pas implémenté pour le moment)\n")
-                            print("maintenant il faut continuer le programme monsieur svp")
+                        print('\n', receiving_keys)
+                        print("je suis une extrémité de la connexion (mais je ne suis pas implémenté pour le moment)\n")
+                        print("maintenant il faut continuer le programme monsieur svp")
 
                     # Après l'établissement
-
                     else:
                         self.messageHandler.handle_message(raw_message)
 

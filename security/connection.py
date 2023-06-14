@@ -52,9 +52,10 @@ class ConnectionClient:
         build_send_message(self.s, "key_establishment", "ECIES", self.dest.key, next, self.priv_node_key, self.sending_keys, len(self.interm))
 
         # envoyer toutes les clefs du retour au destinataire
-        for i in range(len(self.receiving_keys)):
-            next = "clefs_retour"
-            build_send_message(self.s, "key_establishment", "AES", self.priv_node_key, next, self.receiving_keys[i], self.sending_keys, len(self.interm))
+        #import time
+        #time.sleep(0.2)
+        info = ["clefs_retour"]
+        build_send_message(self.s, "key_establishment", "AES", self.priv_node_key, info, pickle.dumps(self.receiving_keys), self.sending_keys, len(self.interm))
         
 
         # for debug purposes
