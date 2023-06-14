@@ -1,8 +1,8 @@
-# run : uvicorn server:app --reload --host 0.0.0.0 --port 80
+# run : uvicorn server:app --reload --host 0.0.0.0 --port 8080
 
 from typing import Union
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 import time
 
 relay_timeout = 5*60 # secondes
@@ -24,15 +24,22 @@ def get_relays():
 
     # purge old relays
     t_timed_out = time.time() - t0 - relay_timeout
-    relays = set( (t,key,ip) for (t,key,ip) in relays if t>t_timed_out )
+    relays = set( (t,key,ip,port) for (t,key,ip,port) in relays if t>t_timed_out )
 
     # on envoit le temps restant avant timeout
-    return [((time.time() - t0) - t, key,ip) for (t,key,ip) in relays]
+    return set( (key,ip,port) for (t,key,ip,port) in relays)
 
-@app.get("/relays/add/{ip}/{key}")
-def add_relay(ip: str, key: str):
-     t = time.time() - t0
-     relays.add((t,key,ip))
+# Pour debug
+@app.get("/relays/add/{ip}/{port}/{key}")
+def add_relay(ip: str, port:int, key: str):
+    t = time.time() - t0
+    relays.add((t,key,ip,port))
+
+@app.get("/relays/add-myself/{port}/{key}")
+def add_relay_myself(port:int, key: str, request: Request):
+    t = time.time() - t0
+    ip = request.client.host
+    relays.add((t,key,ip,port))
 
 
 services = set()

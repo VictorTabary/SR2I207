@@ -5,7 +5,11 @@ import pickle
 from security.utils import *
 from threading import Thread
 from secp256k1 import PrivateKey
+import time
+import requests
 
+ANNOUNCE_DELAY = 1*60 # seconds
+ANNOUNCE_URL = "http://localhost:8080"
 
 
 class NodeServer:
@@ -105,12 +109,18 @@ class NodeServer:
                 print(f"An error occured in the connection from {addr}")
                 break
     
+    def announce_to_relay(self):
+        while True:
+            requests.get(ANNOUNCE_URL+f"/relays/add-myself/{self.port}/{base64.b64encode(self.pubkey).decode()}")
+            time.sleep(ANNOUNCE_DELAY)
 
     def start(self):
-        # penser à se déclarer dans la public-relay-list souvent (toutes les 2 minutes?)
-        self.host = ''        # Symbolic name meaning all available interfaces   
+        
+        # déclaration périodique au serveur public-relay-list
+        Thread(target=self.announce_to_relay).start()
+
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.s.bind((self.host, self.port))
+        self.s.bind(('0.0.0.0', self.port))
         self.s.listen()
 
         while True:
