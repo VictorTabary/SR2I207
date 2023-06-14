@@ -1,4 +1,4 @@
 from security.relay import NodeServer
 
-n = NodeServer(9050)
+n = NodeServer(9054)
 n.start()

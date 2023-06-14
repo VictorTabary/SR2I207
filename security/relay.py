@@ -34,11 +34,9 @@ class RelayHandler:
         def handle_reverse():
             while True:
                 raw_data = self.circuit.sock_to.recv(PACKET_SIZE)
-                self.circuit.sock_to.send(b"ACK")
-                if raw_data != b'ACK':
-                    data = pickle.loads(raw_data)["enc_message"]
-                    decr_message = decrypt(data, self.circuit.aes_key_from)
-                    send_message(self.circuit.sock_from, decr_message)
+                data = pickle.loads(raw_data)["enc_message"]
+                decr_message = decrypt(data, self.circuit.aes_key_from)
+                send_message(self.circuit.sock_from, decr_message)
 
         self.thread = Thread(target=handle_reverse)
         self.thread.start()
@@ -47,7 +45,6 @@ class RelayHandler:
 class CircuitNode:
 
     def __init__(self, conn, addr, server):
-
 
         self.messageHandler = None
         self.addr = addr
@@ -62,7 +59,7 @@ class CircuitNode:
 
         # from/to à comprendre dans le sens de l'établissement de la connexion
         self.sock_from = conn
-        self.sock_to : socket.socket = None # utilisé uniquement si on est pas une extrémité
+        self.sock_to: socket.socket = None # utilisé uniquement si on est pas une extrémité
 
     def close(self):
         self.stop_threads = True
@@ -85,8 +82,8 @@ class CircuitNode:
 
         while True and self.stop_threads == False:
             try:
-                data = self.sock_from.recv(2048)
-                if data and data != b'ACK':
+                data = self.sock_from.recv(PACKET_SIZE)
+                if data:
                     frame = pickle.loads(data)
                     print(frame)
 
@@ -140,7 +137,7 @@ class CircuitNode:
                     else:
                         self.messageHandler.handle_message(raw_message)
 
-                    self.sock_from.send(b"ACK")
+                    #self.sock_from.send(b"ACK")
 
             except socket.error as e:
                 print(e)
@@ -150,6 +147,7 @@ class CircuitNode:
 
 class NodeServer:
     def __init__(self, port):
+        self.s = None
         self.port = port
 
         self.key = PrivateKey()
@@ -179,6 +177,7 @@ class NodeServer:
         Thread(target=self.announce_to_relay).start()
 
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.s.bind(('0.0.0.0', self.port))
         self.s.listen()
 
