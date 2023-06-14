@@ -10,7 +10,7 @@ from security.utils import *
 
 ANNOUNCE_DELAY = 1 * 60  # seconds
 ANNOUNCE_URL = "http://localhost:8080"
-
+PACKET_SIZE = 2048
 
 class ExtremityHandler:
     def __init__(self, circuit):
@@ -22,11 +22,26 @@ class ExtremityHandler:
 class RelayHandler:
     def __init__(self, circuit):
         self.circuit = circuit
+        self.thread = None
 
     def handle_message(self, raw_message):
         #elif frame["action"] == "relay":
         decr_message = decrypt(raw_message, self.circuit.aes_key_to)
         send_message(self.circuit.sock_to, decr_message)
+
+    def start_reverse_relay(self):
+
+        def handle_reverse():
+            while True:
+                raw_data = self.circuit.sock_to.recv(PACKET_SIZE)
+                self.circuit.sock_to.send(b"ACK")
+                if raw_data != b'ACK':
+                    data = pickle.loads(raw_data)["enc_message"]
+                    decr_message = decrypt(data, self.circuit.aes_key_from)
+                    send_message(self.circuit.sock_from, decr_message)
+
+        self.thread = Thread(target=handle_reverse)
+        self.thread.start()
 
 
 class CircuitNode:
@@ -47,7 +62,7 @@ class CircuitNode:
 
         # from/to à comprendre dans le sens de l'établissement de la connexion
         self.sock_from = conn
-        self.sock_to = None # utilisé uniquement si on est pas une extrémité
+        self.sock_to : socket.socket = None # utilisé uniquement si on est pas une extrémité
 
     def close(self):
         self.stop_threads = True
@@ -67,66 +82,63 @@ class CircuitNode:
         nb_keys = 0
         isSetUp = False
         receiving_keys = []
-        extremityHandler = None
 
         while True and self.stop_threads == False:
             try:
                 data = self.sock_from.recv(2048)
-                if data:
+                if data and data != b'ACK':
                     frame = pickle.loads(data)
                     print(frame)
 
                     raw_message = frame["enc_message"]
                     if not EXTREMITY and frame["action"] == "key_establishment":
-                            message = pickle.loads(ecies.decrypt(self.server.privkey, raw_message))
+                        message = pickle.loads(ecies.decrypt(self.server.privkey, raw_message))
 
-                            dest = message['info']
-                            if dest == 'aller':  # cas d'un noeud intermédiaire et de clef aller
+                        dest = message['info']
+                        if dest == 'aller':  # cas d'un noeud intermédiaire et de clef aller
+                            self.aes_key_to = message['m']
+                            self.from_addr = self.addr
+                            print("\nCLE ALLER:", self.aes_key_to, '\n')
 
-                                self.messageHandler = RelayHandler(self)
+                        elif "destination" in dest:
+                            # On devient une extrémité
+                            nb_keys = int(dest.split(',')[1])
+                            EXTREMITY = True  # pour gérer le cas spécial où on est extrémité de la connexion
+                            self.messageHandler = ExtremityHandler(self)
+                            aes_node_key = message['m']
+                            self.from_addr = self.addr
+                            print("\nCLE DU NOEUD:", aes_node_key, '\n')
 
-                                self.aes_key_to = message['m']
-                                self.from_addr = self.addr
-                                print("\nCLE ALLER:", self.aes_key_to, '\n')
+                        else:  # cas d'un noeud intermédiaire et de clef retour
+                            aes_key_back = message['m']
+                            self.to_addr = dest.split(',')[1].split(':') # ip:port
+                            self.sock_to = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            try:
+                                self.sock_to.connect((self.to_addr[0], int(self.to_addr[1])))
 
-                            elif "destination" in dest:
-                                # On devient une extrémité
-                                nb_keys = int(dest.split(',')[1])
-                                EXTREMITY = True  # pour gérer le cas spécial où on est extrémité de la connexion
-                                self.messageHandler = ExtremityHandler(self)
-                                aes_node_key = message['m']
-                                self.from_addr = self.addr
-                                print("\nCLE DU NOEUD:", aes_node_key, '\n')
-
-                            else:  # cas d'un noeud intermédiaire et de clef retour
-                                aes_key_back = message['m']
-                                self.to_addr = dest.split(',')[1].split(':') # ip:port
-                                self.sock_to = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                                try:
-                                    self.sock_to.connect((self.to_addr[0], int(self.to_addr[1])))
-                                    #self.relay_thread = Thread(target=self.handle_relaying) # TODO
-                                    #self.relay_thread.start()
-                                except:
-                                    print("Can't contact the next node")
-                                print("\nCLE RETOUR:", aes_key_back, '\n')
+                                relayHandler = RelayHandler(self)
+                                relayHandler.start_reverse_relay()
+                                self.messageHandler = relayHandler
+                            except:
+                                print("Can't contact the next node")
+                            print("\nCLE RETOUR:", aes_key_back, '\n')
 
                     # EXTREMITY
                     elif not isSetUp and frame["action"] == "key_establishment":
-                            message = pickle.loads(decrypt(raw_message, aes_node_key))
-                            receiving_keys.append(message['m'])
+                        message = pickle.loads(decrypt(raw_message, aes_node_key))
+                        receiving_keys.append(message['m'])
 
-                            if len(receiving_keys) == nb_keys:
-                                isSetUp = True
+                        if len(receiving_keys) == nb_keys:
+                            isSetUp = True
 
-                                print('\n', receiving_keys)
-                                print("je suis une extrémité de la connexion (mais je ne suis pas implémenté pour le moment)\n")
-                                print("maintenant il faut continuer le programme monsieur svp")
+                            print('\n', receiving_keys)
+                            print("je suis une extrémité de la connexion (mais je ne suis pas implémenté pour le moment)\n")
+                            print("maintenant il faut continuer le programme monsieur svp")
 
                     # Après l'établissement
 
                     else:
                         self.messageHandler.handle_message(raw_message)
-
 
                     self.sock_from.send(b"ACK")
 
