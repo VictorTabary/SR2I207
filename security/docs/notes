@@ -56,11 +56,10 @@ Trame pour la distribution des clés:
 
 	Différents cas:
 		- noeud du milieu dans la connexion :
-			reçoit la clé pour l'aller : 		INFO := "aller"
-			reçoit la clé pour le retour : 		INFO := "retour,IP:PORT"
+			reçoit ses clés pour aller/retour 	: 		INFO := ["aller", "retour,IP:PORT"]
 		- pour le dernier noeud de la connexion :
 			reçoit sa clé :						INFO := "destination,{nb de noeuds intermédaires}"
-			reçoit les clés pour le retour : 	INFO := "clefs_retour"
+			reçoit les clés pour le retour : 	INFO := "clefs_retour", M := [toutes les clefs de retour]
 
 Trame pour les relais:
 	{'action': 'relay', 'enc_message': SOME_ENCRYPTED_MESSAGE}
