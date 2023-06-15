@@ -4,10 +4,11 @@ from utils import *
 
 
 class NodeObject:
-    def __init__(self, ip, port, key):
+    def __init__(self, key, ip, port):
+        self.key = key
         self.ip = ip
         self.port = port
-        self.key = key
+
     
     def __str__(self):
         return f"Node at address {self.ip} on port{self.port} with public key \n{self.key}."
