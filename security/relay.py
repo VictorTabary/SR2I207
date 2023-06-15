@@ -9,19 +9,19 @@ from secp256k1 import PrivateKey
 
 from security.config import PACKET_SIZE, ANNOUNCE_DELAY, ANNOUNCE_URL, RELAY_LISTENING_IP
 from security.utils import *
-<<<<<<< HEAD
+
 
 ANNOUNCE_DELAY = 1 * 60     # seconds
 ANNOUNCE_URL = "http://localhost:8080"
 PACKET_SIZE = 2048
 F_PACKET_SIZE = 4           # first packet size
 
-=======
+
 class ExtremityRole(Enum):
     Undefined = 0
     RendezVous = 1
     IntroductionPoint = 2
->>>>>>> 2d90c70f6b0c6ab3cfe695dc98687e99644a7b77
+
 
 class ExtremityHandler:
     def __init__(self, circuit):
