@@ -42,11 +42,11 @@ def service_name(key):
 
 
 def send_message(s, message):
-    print(len(message))
+    #print(len(message))
     try:
         s.send(int(len(message)).to_bytes(F_PACKET_SIZE, 'big') + message)
     except:
-        print("Host down")
+        print("Host down or bad message")
 
 
 def encaps_frame(action, message):

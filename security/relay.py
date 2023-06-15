@@ -28,14 +28,14 @@ class ExtremityHandler:
         message = b'PONG'
         build_send_message(self.circuit.sock_from, "PING", "AES", self.circuit.aes_node_key, self.circuit.from_addr, raw_message, self.circuit.receiving_keys[::-1], self.circuit.nb_keys)
 
-    def handle_message(self, raw_message):
+    def handle_message(self, frame):
         """
         if ping:
             répondre au ping, peu importe le rôle.
             return
         """
-        if decrypt(raw_message, self.circuit.aes_node_key) == b'PING':
-            self.pong(raw_message)
+        if frame['action'] == 'PING':
+            self.pong(frame['message'])
 
         match self.role:
             case ExtremityRole.Undefined:
@@ -62,14 +62,11 @@ class RelayHandler:
         def handle_reverse():
             while True:
                 raw_data = listen(self.circuit.sock_to)
-                data = pickle.loads(raw_data)["enc_message"]
-                decr_message = decrypt(data, self.circuit.aes_key_back)
-
-                print(self.circuit.aes_key_back)
+                decr_frame = pickle.loads(decrypt(raw_data, self.circuit.aes_key_back))
                 
-                print("CONNEXION RECUE DANS L'AUTRE SENS:", decr_message)
+                print("CONNEXION RECUE DANS L'AUTRE SENS:", decr_frame)
 
-                send_message(self.circuit.sock_from, decr_message)
+                send_message(self.circuit.sock_from, decr_frame['message'])
 
         self.thread = Thread(target=handle_reverse)
         self.thread.start()

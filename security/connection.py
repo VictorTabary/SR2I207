@@ -1,6 +1,7 @@
 import socket
 
 from security.utils import *
+import time
 
 
 class NodeObject:
@@ -29,7 +30,18 @@ class ConnectionClient:
             print('Host seems down')
 
         self.conn = self.establish_conn()
-
+    
+    def ping(self, message):
+        build_send_message(self.s, "PING", "AES", self.priv_node_key, None, message, self.sending_keys, len(self.interm)) 
+        t = time.time()
+        while True:
+            data = listen(self.s)
+            if data and pickle.loads(decrypt(data, self.priv_node_key))['message'] == message:
+                t1 = time.time()
+                break
+        return f"Ping: {round((t1-t)*1000,1)} ms"
+                
+        print(self.s.recv(1024))
     
     def establish_conn(self):
         for i in range(len(self.interm)):
@@ -53,13 +65,9 @@ class ConnectionClient:
         # envoyer toutes les clefs du retour au destinataire
         info = ["clefs_retour"]
         build_send_message(self.s, "key_establishment", "AES", self.priv_node_key, info, pickle.dumps(self.receiving_keys), self.sending_keys, len(self.interm))
-        
 
-        #build_send_message(self.s, "PING", "AES", self.priv_node_key, None, b"PING", self.sending_keys, len(self.interm))
-        #import time
-        #time.sleep(5)
-        #print(self.s.recv(1024))
 
+        print(self.ping(b'duqizidqzbidzqb'))
 
         # for debug purposes
         print(self.sending_keys)
