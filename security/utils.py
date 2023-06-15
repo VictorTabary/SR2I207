@@ -7,7 +7,7 @@ import base64
 import hashlib
 import pickle
 import ecies
-
+from security.config import F_PACKET_SIZE
 
 PASSWORD_SIZE = 15
 BLOCK_SIZE = 16
@@ -43,13 +43,7 @@ def service_name(key):
 def send_message(s, message):
     print(len(message))
     try:
-        s.send(message + b'\n')
-        """for i in range(10):
-            if s.recv(1024) != b'ACK':
-                s.send(message + b'\n')
-                print('Could not send the message')
-            else:
-                break"""
+        s.send(int(len(message)).to_bytes(F_PACKET_SIZE, 'big') + message)
     except:
         print("Host down")
 
