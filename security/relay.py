@@ -1,23 +1,39 @@
 import socket
 import time
+from enum import Enum
 from threading import Thread
 
 import ecies
 import requests
 from secp256k1 import PrivateKey
 
+from security.config import PACKET_SIZE, ANNOUNCE_DELAY, ANNOUNCE_URL, RELAY_LISTENING_IP
 from security.utils import *
-
-ANNOUNCE_DELAY = 1 * 60  # seconds
-ANNOUNCE_URL = "http://localhost:8080"
-PACKET_SIZE = 2048
-
+class ExtremityRole(Enum):
+    Undefined = 0
+    RendezVous = 1
+    IntroductionPoint = 2
 
 class ExtremityHandler:
     def __init__(self, circuit):
         self.circuit = circuit
-
+        self.role = ExtremityRole.Undefined
     def handle_message(self, raw_message):
+
+        """
+        if ping:
+            répondre au ping, peu importe le rôle.
+            return
+        """
+
+        match self.role:
+            case ExtremityRole.Undefined:
+                pass
+            case ExtremityRole.RendezVous:
+                pass
+            case ExtremityRole.IntroductionPoint:
+                pass
+
         pass
 
 
@@ -179,7 +195,7 @@ class NodeServer:
 
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.s.bind(('0.0.0.0', self.port))
+        self.s.bind((RELAY_LISTENING_IP, self.port))
         self.s.listen()
 
         while True:
