@@ -7,14 +7,9 @@ import ecies
 import requests
 from secp256k1 import PrivateKey
 
-from security.config import PACKET_SIZE, ANNOUNCE_DELAY, ANNOUNCE_URL, RELAY_LISTENING_IP
+from security.config import F_PACKET_SIZE, ANNOUNCE_DELAY, ANNOUNCE_URL, RELAY_LISTENING_IP
 from security.utils import *
 
-
-ANNOUNCE_DELAY = 1 * 60     # seconds
-ANNOUNCE_URL = "http://localhost:8080"
-PACKET_SIZE = 2048
-F_PACKET_SIZE = 4           # first packet size
 
 
 class ExtremityRole(Enum):
