@@ -1,12 +1,34 @@
-from security.connection import ConnectionClient, NodeObject
+from config import ANNOUNCE_URL
+from connection import ConnectionClient, NodeObject
+
+import requests
+import random
 
 
 class HiddenServiceClient:
 
-    def __init__(self, service: str):
-        pass
+    def __init__(self, serviceHash: str):
+        self.serviceHash = serviceHash
+
+        self.availableRelays = None
+        self.introducerMetadata = None
 
     def connect(self):
+        self.availableRelays = set(requests.get(ANNOUNCE_URL + f"/relays").json())
+        print(self.availableRelays)
+
+        services = requests.get(ANNOUNCE_URL + f"/services").json()
+        random.shuffle(services)
+
+        for (hash, key, ip) in services:
+            if hash == self.serviceHash:
+                self.introducerMetadata = (hash, key, ip)
+                break
+        else:
+            raise RuntimeError("Hidden service not found in services list.")
+
+        # hash,key,ip
+
         # obtenir un point d'intro pour le service
         # obtenir les relais
         # choisir un point de rdv
@@ -19,7 +41,5 @@ class HiddenServiceClient:
         pass
 
 
-conn = ConnectionClient(
-    NodeObject("localhost", 9054, b'AwuTgwUZ6EezzlmP9LOuh6d8z9waqucFv09rSUYq0slS'),
-    [NodeObject("localhost", 9050, b'AwuTgwUZ6EezzlmP9LOuh6d8z9waqucFv09rSUYq0slS'),
-     NodeObject("localhost", 9052, b'AwuTgwUZ6EezzlmP9LOuh6d8z9waqucFv09rSUYq0slS')])
+h = HiddenServiceClient("empty")
+h.connect()

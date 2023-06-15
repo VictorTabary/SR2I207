@@ -50,12 +50,12 @@ def get_services():
 
     # purge old services
     t_timed_out = time.time() - t0 - service_timeout
-    services = set( (t,hash,key,ips) for (t,hash,key,ips) in services if t>t_timed_out )
+    services = set( (t,hash,key,ip) for (t,hash,key,ip) in services if t>t_timed_out )
 
     # on envoit le temps restant avant timeout
-    return [((time.time() - t0) - t, hash,key,ips) for (t, hash,key,ips) in services]
+    return set((hash,key,ip) for (t, hash,key,ip) in services)
 
-@app.get("/services/add/{hash}/{key}/{ips}")
-def add_service(hash:str,  key: str, ips: str):
+@app.get("/services/add/{hash}/{key}/{ip}")
+def add_service(hash:str,  key: str, ip: str):
      t = time.time() - t0
-     services.add((t,hash,key,ips))
+     services.add((t,hash,key,ip))
