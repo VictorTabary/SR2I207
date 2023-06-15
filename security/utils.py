@@ -43,13 +43,7 @@ def service_name(key):
 def send_message(s, message):
     print(len(message))
     try:
-        s.send(message + b'\n')
-        """for i in range(10):
-            if s.recv(1024) != b'ACK':
-                s.send(message + b'\n')
-                print('Could not send the message')
-            else:
-                break"""
+        s.send(int(len(message)).to_bytes(4, 'big') + message)
     except:
         print("Host down")
 

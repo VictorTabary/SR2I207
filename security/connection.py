@@ -30,7 +30,7 @@ class ConnectionClient:
 
         self.conn = self.establish_conn()
 
-
+    
     def establish_conn(self):
         for i in range(len(self.interm)):
             self.Pi = self.interm[i].key
@@ -44,7 +44,6 @@ class ConnectionClient:
             else:
                 info[1] += self.dest.ip + ":" + str(self.dest.port)
             build_send_message(self.s, "key_establishment", "ECIES", self.Pi, info, pickle.dumps([priv_aes_key_aller, priv_aes_key_retour]), self.sending_keys, i)
-
         
         # faire pareil avec la clé du noeud destinataire
         self.priv_node_key = get_private_key()
@@ -52,8 +51,6 @@ class ConnectionClient:
         build_send_message(self.s, "key_establishment", "ECIES", self.dest.key, next, self.priv_node_key, self.sending_keys, len(self.interm))
 
         # envoyer toutes les clefs du retour au destinataire
-        #import time
-        #time.sleep(0.2)
         info = ["clefs_retour"]
         build_send_message(self.s, "key_establishment", "AES", self.priv_node_key, info, pickle.dumps(self.receiving_keys), self.sending_keys, len(self.interm))
         

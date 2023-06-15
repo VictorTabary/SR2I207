@@ -8,9 +8,10 @@ from secp256k1 import PrivateKey
 
 from security.utils import *
 
-ANNOUNCE_DELAY = 1 * 60  # seconds
+ANNOUNCE_DELAY = 1 * 60     # seconds
 ANNOUNCE_URL = "http://localhost:8080"
 PACKET_SIZE = 2048
+F_PACKET_SIZE = 4           # first packet size
 
 
 class ExtremityHandler:
@@ -68,6 +69,18 @@ class CircuitNode:
         for s in self.socks:
             s.shutdown(socket.SHUT_RDWR); s.close()
             """
+        
+    def listen(self, conn):
+        # écouter tant qu'on n'a pas 4 octets
+        data = b''
+        while len(data) != F_PACKET_SIZE:
+            data += conn.recv(F_PACKET_SIZE - len(data))
+        packet_size = int.from_bytes(data, 'big')
+
+        packet = b''
+        while len(packet) != packet_size:
+            packet += conn.recv(packet_size - len(packet))
+        return packet
 
     def handle_request(self):
         print('Connected by', self.addr)
@@ -81,7 +94,7 @@ class CircuitNode:
 
         while True and self.stop_threads == False:
             try:
-                data = self.sock_from.recv(PACKET_SIZE)
+                data = self.listen(self.sock_from)
                 if data:
                     frame = pickle.loads(data)
                     print(frame)
@@ -137,8 +150,6 @@ class CircuitNode:
                     # Après l'établissement
                     else:
                         self.messageHandler.handle_message(raw_message)
-
-                    #self.sock_from.send(b"ACK")
 
             except socket.error as e:
                 print(e)
