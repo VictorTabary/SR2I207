@@ -22,13 +22,20 @@ class ExtremityHandler:
     def __init__(self, circuit):
         self.circuit = circuit
         self.role = ExtremityRole.Undefined
-    def handle_message(self, raw_message):
 
+    def pong(self, raw_message):
+        print("RECEIVED PING, SENDING PONG")
+        message = b'PONG'
+        build_send_message(self.circuit.sock_from, "PING", "AES", self.circuit.aes_node_key, self.circuit.from_addr, raw_message, self.circuit.receiving_keys[::-1], self.circuit.nb_keys)
+
+    def handle_message(self, raw_message):
         """
         if ping:
             répondre au ping, peu importe le rôle.
             return
         """
+        if decrypt(raw_message, self.circuit.aes_node_key) == b'PING':
+            self.pong(raw_message)
 
         match self.role:
             case ExtremityRole.Undefined:
@@ -48,16 +55,20 @@ class RelayHandler:
 
     def handle_message(self, raw_message):
         #elif frame["action"] == "relay":
-        decr_message = decrypt(raw_message, self.circuit.aes_key_to)
-        send_message(self.circuit.sock_to, decr_message)
+        send_message(self.circuit.sock_to, raw_message['message'])
 
 
     def start_reverse_relay(self):
         def handle_reverse():
             while True:
-                raw_data = self.circuit.sock_to.recv(PACKET_SIZE)
+                raw_data = listen(self.circuit.sock_to)
                 data = pickle.loads(raw_data)["enc_message"]
-                decr_message = decrypt(data, self.circuit.aes_key_from)
+                decr_message = decrypt(data, self.circuit.aes_key_back)
+
+                print(self.circuit.aes_key_back)
+                
+                print("CONNEXION RECUE DANS L'AUTRE SENS:", decr_message)
+
                 send_message(self.circuit.sock_from, decr_message)
 
         self.thread = Thread(target=handle_reverse)
@@ -88,39 +99,31 @@ class CircuitNode:
         for s in self.socks:
             s.shutdown(socket.SHUT_RDWR); s.close()
             """
-        
-    def listen(self, conn):
-        # écouter tant qu'on n'a pas 4 octets
-        data = b''
-        while len(data) != F_PACKET_SIZE:
-            data += conn.recv(F_PACKET_SIZE - len(data))
-        packet_size = int.from_bytes(data, 'big')
-
-        packet = b''
-        while len(packet) != packet_size:
-            packet += conn.recv(packet_size - len(packet))
-        return packet
 
     def handle_request(self):
         print('Connected by', self.addr)
 
         # utilisés seulement si extrémité
-        aes_node_key = b''
-        EXTREMITY = False
-        nb_keys = 0
-        isSetUp = False
-        receiving_keys = []
+        self.aes_node_key = None
+        self.EXTREMITY = False
+        self.nb_keys = 0
+        self.isSetUp = False
+        self.receiving_keys = []
 
         while True and self.stop_threads == False:
             try:
-                data = self.listen(self.sock_from)
+                data = listen(self.sock_from)
                 if data:
-                    frame = pickle.loads(data)
-                    print(frame)
+                    if self.aes_key_to == None and self.aes_node_key == None:         # si le noeud n'a pas encore reçu sa clef AES
+                        frame = pickle.loads(ecies.decrypt('0x'+self.server.privkey, data))
+                    elif self.EXTREMITY:
+                        frame = pickle.loads(decrypt(data, self.aes_node_key))
+                    else:
+                        frame = pickle.loads(decrypt(data, self.aes_key_to))
 
-                    raw_message = frame["enc_message"]
-                    if not EXTREMITY and frame["action"] == "key_establishment":
-                        message = pickle.loads(ecies.decrypt(self.server.privkey, raw_message))
+                    print(frame)
+                    if not self.EXTREMITY and frame["action"] == "key_establishment":
+                        message = pickle.loads(frame['message'])
 
                         dest = message['info']
                         if dest[0] == 'aller':  # cas d'un noeud intermédiaire
@@ -132,7 +135,7 @@ class CircuitNode:
                             print("\nCLE ALLER:", self.aes_key_to)
 
                             # clef retour
-                            aes_key_back = keys[1]
+                            self.aes_key_back = keys[1]
                             self.to_addr = dest[1].split(',')[1].split(':') # ip:port
                             self.sock_to = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                             try:
@@ -143,32 +146,32 @@ class CircuitNode:
                                 self.messageHandler = relayHandler
                             except:
                                 print("Can't contact the next node")
-                            print("\nCLE RETOUR:", aes_key_back, '\n')
+                            print("\nCLE RETOUR:", self.aes_key_back, '\n')
 
                         elif dest[0] == "destination":
                             # On devient une extrémité
-                            nb_keys = int(dest[1])
-                            EXTREMITY = True  # pour gérer le cas spécial où on est extrémité de la connexion
+                            self.nb_keys = int(dest[1])
+                            self.EXTREMITY = True  # pour gérer le cas spécial où on est extrémité de la connexion
                             self.messageHandler = ExtremityHandler(self)
-                            aes_node_key = message['m']
+                            self.aes_node_key = message['m']
                             self.from_addr = self.addr
-                            print("\nCLE DU NOEUD:", aes_node_key, '\n')
+                            print("\nCLE DU NOEUD:", self.aes_node_key, '\n')
 
                     # EXTREMITY
-                    elif not isSetUp and frame["action"] == "key_establishment":
-                        message = pickle.loads(decrypt(raw_message, aes_node_key))
-                        receiving_keys = pickle.loads(message['m'])
+                    elif not self.isSetUp and frame["action"] == "key_establishment":
+                        message = frame['message']
+                        self.receiving_keys = pickle.loads(message)
 
-                        assert len(receiving_keys) == nb_keys
-                        isSetUp = True
+                        assert len(self.receiving_keys) == self.nb_keys
+                        self.isSetUp = True
 
-                        print('\n', receiving_keys)
+                        print('\n', self.receiving_keys)
                         print("je suis une extrémité de la connexion (mais je ne suis pas implémenté pour le moment)\n")
                         print("maintenant il faut continuer le programme monsieur svp")
 
-                    # Après l'établissement
+                    # Relais
                     else:
-                        self.messageHandler.handle_message(raw_message)
+                        self.messageHandler.handle_message(frame)
 
             except socket.error as e:
                 print(e)

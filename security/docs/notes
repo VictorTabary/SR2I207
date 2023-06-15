@@ -37,12 +37,12 @@ Pour signer :
 
 
 Pour chiffrer avec ECIES :
-	from ecies import encrypt
-	encrypt('0x' + key.pubkey.serialize().hex(), b'bygbybiu')
+	import ecies
+	ecies.encrypt('0x' + key.pubkey.serialize().hex(), b'bygbybiu')
 
 
 Pour déchiffrer avec ECIES et récupérer la clé AES :
-	decrypt('0x'+key.serialize(), base64.b64decode(c))
+	ecies.decrypt('0x'+key.serialize(), base64.b64decode(c))
 
 
 Pour exporter la clé publique :

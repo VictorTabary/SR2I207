@@ -1,6 +1,6 @@
 import socket
 
-from utils import *
+from security.utils import *
 
 
 class NodeObject:
@@ -54,6 +54,12 @@ class ConnectionClient:
         info = ["clefs_retour"]
         build_send_message(self.s, "key_establishment", "AES", self.priv_node_key, info, pickle.dumps(self.receiving_keys), self.sending_keys, len(self.interm))
         
+
+        #build_send_message(self.s, "PING", "AES", self.priv_node_key, None, b"PING", self.sending_keys, len(self.interm))
+        #import time
+        #time.sleep(5)
+        #print(self.s.recv(1024))
+
 
         # for debug purposes
         print(self.sending_keys)

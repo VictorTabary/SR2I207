@@ -9,6 +9,7 @@ import pickle
 import ecies
 from security.config import F_PACKET_SIZE
 
+
 PASSWORD_SIZE = 15
 BLOCK_SIZE = 16
 pad = lambda s: s + ((BLOCK_SIZE - len(s) % BLOCK_SIZE) * chr(BLOCK_SIZE - len(s) % BLOCK_SIZE)).encode()
@@ -48,19 +49,34 @@ def send_message(s, message):
         print("Host down")
 
 
-def encaps_frame(action, enc_message):
-    return pickle.dumps({'action': action, 'enc_message': enc_message})
+def encaps_frame(action, message):
+    return pickle.dumps({'action': action, 'message': message})
 
 
-def build_send_message(s, action, cipher, cipher_key, next, message, sending_keys, node_id):
-    clear_message = pickle.dumps({'info': next, 'm': message})
-    if cipher == 'ECIES':
-        enc_key = ecies.encrypt('0x' + base64.b64decode(cipher_key).hex(), clear_message)
-    else:
-        enc_key = encrypt(clear_message, cipher_key)
-    frame = encaps_frame(action, enc_key)
+def build_send_message(s, action, cipher, cipher_key, info, message, sending_keys, node_id):
+    enc = lambda message, key: encrypt(message, key)
+    if cipher == "ECIES":
+        message = pickle.dumps({'info': info, 'm': message})
+        enc = lambda message, key: ecies.encrypt('0x' + base64.b64decode(key).hex(), message)
+
+    frame = encaps_frame(action, message)
+    enc_message = enc(frame, cipher_key)
+
     for j in range(node_id)[::-1]:
-        enc_key = encrypt(frame, sending_keys[j])
-        frame = encaps_frame("relay", enc_key)
+        frame = encaps_frame("relay", enc_message)
+        enc_message = encrypt(frame, sending_keys[j])
     # l'envoyer au destinataire
-    send_message(s, frame)
+    send_message(s, enc_message)
+
+
+def listen(conn):
+    # écouter tant qu'on n'a pas 4 octets
+    data = b''
+    while len(data) != F_PACKET_SIZE:
+        data += conn.recv(F_PACKET_SIZE - len(data))
+    packet_size = int.from_bytes(data, 'big')
+
+    packet = b''
+    while len(packet) != packet_size:
+        packet += conn.recv(packet_size - len(packet))
+    return packet
