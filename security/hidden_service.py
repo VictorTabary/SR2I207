@@ -22,7 +22,8 @@ class HiddenService:
         self.introCircuits = []
 
     def _getUnusedRelay(self):
-        return self.availableRelays.pop()
+        elem = self.availableRelays.pop()
+        return elem[0].replace('_', '/'), elem[1], elem[2]
     
     def announce_to_relay(self):
         while True:

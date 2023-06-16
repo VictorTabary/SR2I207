@@ -183,10 +183,10 @@ class NodeServer:
         self.port = port
 
         self.key = PrivateKey()
-        # self.privkey = "0x" + self.key.serialize()  # hexa
-        # self.pubkey = self.key.pubkey.serialize()   # pas hexa
-        self.privkey = base64.b64decode(b'AQcx++axCPTh3xOmYC8IzUSrrgynvVarDp+2fZj/wf4=').hex()
-        self.pubkey = base64.b64decode(b'AwuTgwUZ6EezzlmP9LOuh6d8z9waqucFv09rSUYq0slS')
+        self.privkey = self.key.serialize()  # hexa
+        self.pubkey = self.key.pubkey.serialize()   # pas hexa
+        # self.privkey = base64.b64decode(b'AQcx++axCPTh3xOmYC8IzUSrrgynvVarDp+2fZj/wf4=').hex()
+        # self.pubkey = base64.b64decode(b'AwuTgwUZ6EezzlmP9LOuh6d8z9waqucFv09rSUYq0slS')
 
         self.circuits = []
 
@@ -201,7 +201,7 @@ class NodeServer:
 
     def announce_to_relay(self):
         while True:
-            requests.get(ANNOUNCE_URL + f"/relays/add-myself/{self.port}/{base64.b64encode(self.pubkey).decode()}")
+            requests.get(ANNOUNCE_URL + f"/relays/add-myself/{self.port}/{base64.b64encode(self.pubkey).decode().replace('/', '_')}")
             time.sleep(ANNOUNCE_DELAY)
 
     def start(self):

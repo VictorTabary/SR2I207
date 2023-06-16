@@ -16,7 +16,8 @@ class HiddenServiceClient:
         self.introducerCircuit = None
 
     def _getUnusedRelay(self):
-        return self.availableRelays.pop()
+        elem = self.availableRelays.pop()
+        return elem[0].replace('_', '/'), elem[1], elem[2]
 
     def connect(self):
 
