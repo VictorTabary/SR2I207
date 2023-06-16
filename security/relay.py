@@ -18,44 +18,6 @@ class ExtremityRole(Enum):
     IntroductionPoint = 2
 
 
-class ExtremityHandler:
-    def __init__(self, circuit):
-        self.circuit = circuit
-        self.role = ExtremityRole.Undefined
-
-        self.serviceName = None
-
-    def pong(self, raw_message):
-        #print("RECEIVED PING, SENDING PONG")
-        build_send_message(self.circuit.sock_from, "PING", "AES", self.circuit.aes_node_key, self.circuit.from_addr, raw_message, self.circuit.receiving_keys[::-1], self.circuit.nb_keys)
-
-    def handle_message(self, frame):
-        if frame['action'] == 'PING':
-            self.pong(frame['message'])
-
-        elif frame['action'] == 'INTRO_SERVER_SIDE':
-            self.role = ExtremityRole.IntroductionPoint
-            self.serviceName = frame['message']
-            self.circuit.introducedServices.append(self.serviceName)
-        elif frame['action'] == 'INTRO_CLIENT_SIDE':
-            # vérifier que le noeud est bien point d'intro pour le service demandé, sinon refuser
-            # si service bien là, partager les ressources au thread qui gère
-            pass 
-
-
-        match self.role:
-            case ExtremityRole.Undefined:
-                pass
-            case ExtremityRole.RendezVous:
-                pass
-            case ExtremityRole.IntroductionPoint:
-                # récupérer les messages qui sont envoyés en direction du service demandé (self.serviceName)
-                # les relayer
-                # gérer le retour
-                pass
-
-
-
 class RelayHandler:
     def __init__(self, circuit):
         self.circuit = circuit
@@ -80,6 +42,51 @@ class RelayHandler:
         self.thread.start()
 
 
+class ExtremityHandler:
+    def __init__(self, circuit):
+        self.circuit = circuit
+        self.role = ExtremityRole.Undefined
+
+        self.serviceName = None
+
+    def pong(self, raw_message):
+        #print("RECEIVED PING, SENDING PONG")
+        build_send_message(self.circuit.sock_from, "PING", "AES", self.circuit.aes_node_key, self.circuit.from_addr, raw_message, self.circuit.receiving_keys[::-1], self.circuit.nb_keys)
+
+    def handle_message(self, frame):
+        if frame['action'] == 'PING':
+            self.pong(frame['message'])
+
+        elif frame['action'] == 'INTRO_SERVER_SIDE':
+            self.role = ExtremityRole.IntroductionPoint
+            self.serviceName = frame['message']
+
+        elif frame['action'] == 'INTRO_CLIENT_SIDE':
+            # vérifier que le noeud est bien point d'intro pour le service demandé, sinon refuser
+            self.serviceName = frame['message']['service']
+            if self.serviceName not in self.circuit.server.introducedServices.keys():
+                raw_message = f"Service {self.serviceName} not found"
+                build_send_message(self.circuit.sock_from, "ERROR", "AES", self.circuit.aes_node_key, self.circuit.from_addr, raw_message, self.circuit.receiving_keys[::-1], self.circuit.nb_keys)
+            else:
+                # si service bien là, relayer les infos au service
+                transfer = self.circuit.server.introducedServices[self.serviceName]
+                transfer(frame['message']['message'])
+
+                # il faudrait gérer le retour avec la fonction transfer aussi
+                # donc la déclarer un peu autrement pour transférer aussi au retour
+
+        match self.role:
+            case ExtremityRole.Undefined:
+                pass
+            case ExtremityRole.RendezVous:
+                pass
+            case ExtremityRole.IntroductionPoint:
+                # stocker la fonction d'intro dans le serv
+                relay_intro = lambda message : build_send_message(self.circuit.sock_from, "RELAY", "AES", self.circuit.aes_node_key, self.circuit.from_addr, message, self.circuit.receiving_keys[::-1], self.circuit.nb_keys)
+                self.circuit.server.introducedServices[self.serviceName] = relay_intro
+
+
+
 class CircuitNode:
     def __init__(self, conn, addr, server):
         self.messageHandler = None
@@ -97,8 +104,6 @@ class CircuitNode:
         self.sock_from = conn
         self.sock_to: socket.socket = None # utilisé uniquement si on n'est pas une extrémité
 
-        
-        self.introducedServices = []
 
     def close(self):
         self.stop_threads = True
@@ -200,6 +205,8 @@ class NodeServer:
         # self.pubkey = base64.b64decode(b'AwuTgwUZ6EezzlmP9LOuh6d8z9waqucFv09rSUYq0slS')
 
         self.circuits = []
+        
+        self.introducedServices = dict()
 
     def __str__(self):
         return f"Node at address {self.ip} with public key \n{self.key}."

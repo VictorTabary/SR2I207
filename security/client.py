@@ -4,6 +4,7 @@ import requests
 
 from security.config import ANNOUNCE_URL
 from security.connection import ConnectionClient, NodeObject
+from security.utils import *
 
 
 class HiddenServiceClient:
@@ -58,14 +59,16 @@ class HiddenServiceClient:
         ### Passing Rendez-vous relay and one time password through the introducer to the hidden service ###
 
         # TODO
+        raw_message = {'service': self.serviceHash, 'message': 'bien vu bg'}
+        build_send_message(self.introducerCircuit.s, "INTRO_CLIENT_SIDE", "AES", self.introducerCircuit.priv_node_key, None, raw_message, self.introducerCircuit.sending_keys, len(self.introducerCircuit.interm))
+        
+        print(f'''Envoyé "{raw_message['message']}" à {raw_message['service']}''')
 
         # we now have a ConnectionClient object wired to the hidden service
 
         ### Ping the hidden service ###
 
         # TODO
-
-
 
         self.rdvCircuit.close()
         self.introducerCircuit.close()
