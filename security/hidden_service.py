@@ -14,7 +14,8 @@ class HiddenService:
         self.key = PrivateKey()
         self.privkey = "0x" + self.key.serialize()  # hexa
         self.pubkey = self.key.pubkey.serialize()   # pas hexa
-        self.hash = service_name(self.pubkey)
+        #self.hash = service_name(self.pubkey)
+        self.hash = "empty"
 
         self.port = 10000
 

@@ -51,6 +51,7 @@ class HiddenServiceClient:
         L = []
         for i in range(3):
             L.append(NodeObject(*self._getUnusedRelay()))
+        print("Etablissement de la connexion avec le point d'intro:")
         self.introducerCircuit = ConnectionClient(NodeObject(*self.introducerMetadata[1:]), L)
 
         ### Passing Rendez-vous relay and one time password through the introducer to the hidden service ###
