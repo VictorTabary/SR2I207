@@ -1,10 +1,12 @@
 import requests
 import time
+import random
+from threading import Thread
 from secp256k1 import PrivateKey
 
-from security.config import ANNOUNCE_URL
+from security.config import ANNOUNCE_URL, ANNOUNCE_DELAY
 from security.connection import ConnectionClient, NodeObject
-from security.utils import service_name
+from security.utils import *
 
 
 class HiddenService:
@@ -19,10 +21,10 @@ class HiddenService:
     def _getUnusedRelay(self):
         return self.availableRelays.pop()
     
-    def announce_to_relay(self): 
+    def announce_to_relay(self):
         while True:
             for intro in self.introducerNodes:
-                requests.get(ANNOUNCE_URL + f"/services/add-myself/{self.hash.decode()}/{base64.b64encode(node.key).decode()}/{intro.ip}/{intro.port}/")
+                requests.get(ANNOUNCE_URL + f"/services/add/{self.hash}/{intro.key}/{intro.ip}/{intro.port}/")
             time.sleep(ANNOUNCE_DELAY)
 
     def start(self):
