@@ -18,6 +18,8 @@ class HiddenService:
 
         self.port = 10000
 
+        self.introCircuits = []
+
     def _getUnusedRelay(self):
         return self.availableRelays.pop()
     
@@ -38,3 +40,12 @@ class HiddenService:
         Thread(target=self.announce_to_relay).start()
 
         # se connecter aux noeuds d'intro
+        print("Etablissement de la connexion avec les points d'intros")
+        for node in self.introducerNodes:
+            L = []
+            for i in range(3):
+                L.append(NodeObject(*self._getUnusedRelay()))
+            circuit = rdvCircuit = ConnectionClient(node, L)
+            self.introCircuits.append(circuit)
+
+        print("Pour debuguer: \nles noeuds suivant sont toujours dispos:", self.availableRelays)
