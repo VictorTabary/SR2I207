@@ -2,8 +2,8 @@ import random
 
 import requests
 
-from config import ANNOUNCE_URL
-from connection import ConnectionClient, NodeObject
+from security.config import ANNOUNCE_URL
+from security.connection import ConnectionClient, NodeObject
 
 
 class HiddenServiceClient:
@@ -12,6 +12,7 @@ class HiddenServiceClient:
         self.serviceHash = serviceHash
 
         self.availableRelays: list = None
+        self.rdvCircuit = None
         self.introducerCircuit = None
 
     def _getUnusedRelay(self):
@@ -21,7 +22,7 @@ class HiddenServiceClient:
 
         ### Getting relays/services info from public server ###
 
-        self.availableRelays = list(set(requests.get(ANNOUNCE_URL + f"/relays").json()))
+        self.availableRelays = list(set(map(lambda x: tuple(x), requests.get(ANNOUNCE_URL + f"/relays").json())))
         random.shuffle(self.availableRelays)
         # format : (key,ip,port)
 
@@ -30,7 +31,13 @@ class HiddenServiceClient:
 
         ### Building a circuit to a Rendez-vous relay ###
 
-        # TODO
+        rdvNode = NodeObject(*self._getUnusedRelay())
+        L = []
+        for i in range(3):
+            L.append(NodeObject(*self._getUnusedRelay()))
+        print("Etablissement de la connexion avec le point de rendez-vous:")
+        self.rdvCircuit = ConnectionClient(rdvNode, L)
+
 
         ### Building a circuit to an introducer to the hidden service ###
 
@@ -58,6 +65,3 @@ class HiddenServiceClient:
 
         return True
 
-
-h = HiddenServiceClient("empty")
-h.connect()

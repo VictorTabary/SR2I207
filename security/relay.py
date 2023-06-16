@@ -24,7 +24,7 @@ class ExtremityHandler:
         self.role = ExtremityRole.Undefined
 
     def pong(self, raw_message):
-        print("RECEIVED PING, SENDING PONG")
+        #print("RECEIVED PING, SENDING PONG")
         message = b'PONG'
         build_send_message(self.circuit.sock_from, "PING", "AES", self.circuit.aes_node_key, self.circuit.from_addr, raw_message, self.circuit.receiving_keys[::-1], self.circuit.nb_keys)
 
@@ -64,7 +64,7 @@ class RelayHandler:
                 raw_data = listen(self.circuit.sock_to)
                 decr_frame = pickle.loads(decrypt(raw_data, self.circuit.aes_key_back))
                 
-                print("CONNEXION RECUE DANS L'AUTRE SENS:", decr_frame)
+                #print("CONNEXION RECUE DANS L'AUTRE SENS:", decr_frame)
 
                 send_message(self.circuit.sock_from, decr_frame['message'])
 
@@ -118,7 +118,7 @@ class CircuitNode:
                     else:
                         frame = pickle.loads(decrypt(data, self.aes_key_to))
 
-                    print(frame)
+                    #print(frame)
                     if not self.EXTREMITY and frame["action"] == "key_establishment":
                         message = pickle.loads(frame['message'])
 
@@ -129,7 +129,7 @@ class CircuitNode:
 
                             self.aes_key_to = keys[0]
                             self.from_addr = self.addr
-                            print("\nCLE ALLER:", self.aes_key_to)
+                            #print("\nCLE ALLER:", self.aes_key_to)
 
                             # clef retour
                             self.aes_key_back = keys[1]
@@ -142,8 +142,9 @@ class CircuitNode:
                                 relayHandler.start_reverse_relay()
                                 self.messageHandler = relayHandler
                             except:
-                                print("Can't contact the next node")
-                            print("\nCLE RETOUR:", self.aes_key_back, '\n')
+                                #print("Can't contact the next node")
+                                pass
+                            #print("\nCLE RETOUR:", self.aes_key_back, '\n')
 
                         elif dest[0] == "destination":
                             # On devient une extrémité
@@ -152,7 +153,7 @@ class CircuitNode:
                             self.messageHandler = ExtremityHandler(self)
                             self.aes_node_key = message['m']
                             self.from_addr = self.addr
-                            print("\nCLE DU NOEUD:", self.aes_node_key, '\n')
+                            #print("\nCLE DU NOEUD:", self.aes_node_key, '\n')
 
                     # EXTREMITY
                     elif not self.isSetUp and frame["action"] == "key_establishment":
@@ -162,9 +163,9 @@ class CircuitNode:
                         assert len(self.receiving_keys) == self.nb_keys
                         self.isSetUp = True
 
-                        print('\n', self.receiving_keys)
-                        print("je suis une extrémité de la connexion (mais je ne suis pas implémenté pour le moment)\n")
-                        print("maintenant il faut continuer le programme monsieur svp")
+                        #print('\n', self.receiving_keys)
+                        #print("je suis une extrémité de la connexion (mais je ne suis pas implémenté pour le moment)\n")
+                        #print("maintenant il faut continuer le programme monsieur svp")
 
                     # Relais
                     else:

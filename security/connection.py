@@ -41,8 +41,6 @@ class ConnectionClient:
                 t1 = time.time()
                 break
         return f"Ping: {round((t1-t)*1000,1)} ms"
-                
-        print(self.s.recv(1024))
     
     def establish_conn(self):
         for i in range(len(self.interm)):
@@ -68,11 +66,12 @@ class ConnectionClient:
         build_send_message(self.s, "key_establishment", "AES", self.priv_node_key, info, pickle.dumps(self.receiving_keys), self.sending_keys, len(self.interm))
 
 
-        print(self.ping(b'duqizidqzbidzqb'))
-
         # for debug purposes
-        print(self.sending_keys)
-        print(self.receiving_keys)
-        print(self.priv_node_key)
+        #print(self.sending_keys)
+        #print(self.receiving_keys)
+        #print(self.priv_node_key)
+
+        print("\tConnexion établie")
+        print('\t' + self.ping(b'duqizidqzbidzqb') + '\n')
 
         self.s.close()
