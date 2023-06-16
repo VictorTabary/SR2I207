@@ -31,6 +31,9 @@ class ConnectionClient:
             print('Host seems down')
 
         self.conn = self.establish_conn()
+
+    def close(self):
+        self.s.close()
     
     def ping(self, message):
         build_send_message(self.s, "PING", "AES", self.priv_node_key, None, message, self.sending_keys, len(self.interm)) 
@@ -74,4 +77,3 @@ class ConnectionClient:
         print("\tConnexion établie")
         print('\t' + self.ping(b'duqizidqzbidzqb') + '\n')
 
-        self.s.close()

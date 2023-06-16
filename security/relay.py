@@ -23,19 +23,25 @@ class ExtremityHandler:
         self.circuit = circuit
         self.role = ExtremityRole.Undefined
 
+        self.serviceName = None
+
     def pong(self, raw_message):
         #print("RECEIVED PING, SENDING PONG")
-        message = b'PONG'
         build_send_message(self.circuit.sock_from, "PING", "AES", self.circuit.aes_node_key, self.circuit.from_addr, raw_message, self.circuit.receiving_keys[::-1], self.circuit.nb_keys)
 
     def handle_message(self, frame):
-        """
-        if ping:
-            répondre au ping, peu importe le rôle.
-            return
-        """
         if frame['action'] == 'PING':
             self.pong(frame['message'])
+
+        elif frame['action'] == 'INTRO_SERVER_SIDE':
+            self.role = ExtremityRole.IntroductionPoint
+            self.serviceName = frame['message']
+            self.circuit.introducedServices.append(self.serviceName)
+        elif frame['action'] == 'INTRO_CLIENT_SIDE':
+            # vérifier que le noeud est bien point d'intro pour le service demandé, sinon refuser
+            # si service bien là, partager les ressources au thread qui gère
+            pass 
+
 
         match self.role:
             case ExtremityRole.Undefined:
@@ -43,9 +49,11 @@ class ExtremityHandler:
             case ExtremityRole.RendezVous:
                 pass
             case ExtremityRole.IntroductionPoint:
+                # récupérer les messages qui sont envoyés en direction du service demandé (self.serviceName)
+                # les relayer
+                # gérer le retour
                 pass
 
-        pass
 
 
 class RelayHandler:
@@ -88,6 +96,9 @@ class CircuitNode:
         # from/to à comprendre dans le sens de l'établissement de la connexion
         self.sock_from = conn
         self.sock_to: socket.socket = None # utilisé uniquement si on n'est pas une extrémité
+
+        
+        self.introducedServices = []
 
     def close(self):
         self.stop_threads = True

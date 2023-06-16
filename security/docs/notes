@@ -68,7 +68,7 @@ Trame pour les relais:
 
 PROBLEMES A RESOUDRE:
 	- procédure pour fermer les connexions entre les noeuds
-	- relai des messages dans l'autre sens (via les mêmes ports !)
+	- gérer le partage des infos des threads pour les points d'intros / rdv
 
 
 FAILLES POSSIBLES:

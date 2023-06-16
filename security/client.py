@@ -44,7 +44,7 @@ class HiddenServiceClient:
 
         for (hash, key, ip, port) in services:
             if hash == self.serviceHash:
-                self.introducerMetadata = (hash, key, ip, port)
+                self.introducerMetadata = (hash, key.replace('_', '/'), ip, port)
                 break
         else:
             raise RuntimeError("Hidden service not found in services list.")
@@ -65,5 +65,9 @@ class HiddenServiceClient:
 
         # TODO
 
+
+
+        self.rdvCircuit.close()
+        self.introducerCircuit.close()
         return True
 

@@ -28,7 +28,7 @@ class HiddenService:
     def announce_to_relay(self):
         while True:
             for intro in self.introducerNodes:
-                requests.get(ANNOUNCE_URL + f"/services/add/{self.hash}/{intro.key}/{intro.ip}/{intro.port}/")
+                requests.get(ANNOUNCE_URL + f"/services/add/{self.hash}/{intro.key.replace('/', '_')}/{intro.ip}/{intro.port}/")
             time.sleep(ANNOUNCE_DELAY)
 
     def start(self):
@@ -47,7 +47,11 @@ class HiddenService:
             L = []
             for i in range(3):
                 L.append(NodeObject(*self._getUnusedRelay()))
-            circuit = rdvCircuit = ConnectionClient(node, L)
+            circuit = ConnectionClient(node, L)
             self.introCircuits.append(circuit)
 
+            raw_message = self.hash
+            build_send_message(circuit.s, "INTRO_SERVER_SIDE", "AES", circuit.priv_node_key, None, raw_message, circuit.sending_keys, len(circuit.interm))
+
         print("Pour debuguer: \nles noeuds suivant sont toujours dispos:", self.availableRelays)
+
