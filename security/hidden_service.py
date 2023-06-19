@@ -29,7 +29,7 @@ class HiddenService:
     def _getUnusedRelay(self):
         # S'il y a une exception ici, assez probablement il n'y avait pas assez de relais dans la liste.
         elem = self.availableRelays.pop()
-        return elem[0].replace('_', '/'), elem[1], elem[2]
+        return elem[0].replace('_', '   /'), elem[1], elem[2]
     
     def announce_to_relay(self):
         while True:
@@ -42,7 +42,8 @@ class HiddenService:
             data = listen(circuit.s)
             # gérer les connexions ici
             if data:
-                print(pickle.loads(decrypt(data, circuit.priv_node_key))['message'])
+                message = pickle.loads(decrypt(data, circuit.priv_node_key))['message']
+                print("Reçu : ",message) # debug ; TODO : delete
 
     def start(self):
         print("Hidden Service")
