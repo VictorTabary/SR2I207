@@ -3,13 +3,13 @@ import time
 from enum import Enum
 from threading import Thread
 
+
 import ecies
 import requests
 from secp256k1 import PrivateKey
 
-from security.config import F_PACKET_SIZE, ANNOUNCE_DELAY, ANNOUNCE_URL, RELAY_LISTENING_IP
-from security.utils import *
-
+from config import F_PACKET_SIZE, ANNOUNCE_DELAY, ANNOUNCE_URL, RELAY_LISTENING_IP
+from utils import *
 
 
 class ExtremityRole(Enum):
@@ -24,17 +24,16 @@ class RelayHandler:
         self.thread = None
 
     def handle_message(self, raw_message):
-        #elif frame["action"] == "relay":
+        # elif frame["action"] == "relay":
         send_message(self.circuit.sock_to, raw_message['message'])
-
 
     def start_reverse_relay(self):
         def handle_reverse():
             while True:
                 raw_data = listen(self.circuit.sock_to)
                 decr_frame = pickle.loads(decrypt(raw_data, self.circuit.aes_key_back))
-                
-                #print("CONNEXION RECUE DANS L'AUTRE SENS:", decr_frame)
+
+                # print("CONNEXION RECUE DANS L'AUTRE SENS:", decr_frame)
 
                 send_message(self.circuit.sock_from, decr_frame['message'])
 
@@ -50,8 +49,9 @@ class ExtremityHandler:
         self.serviceName = None
 
     def pong(self, raw_message):
-        #print("RECEIVED PING, SENDING PONG")
-        build_send_message(self.circuit.sock_from, "PING", "AES", self.circuit.aes_node_key, self.circuit.from_addr, raw_message, self.circuit.receiving_keys[::-1], self.circuit.nb_keys)
+        # print("RECEIVED PING, SENDING PONG")
+        build_send_message(self.circuit.sock_from, "PING", "AES", self.circuit.aes_node_key, self.circuit.from_addr,
+                           raw_message, self.circuit.receiving_keys[::-1], self.circuit.nb_keys)
 
     def handle_message(self, frame):
         if frame['action'] == 'PING':
@@ -66,7 +66,9 @@ class ExtremityHandler:
             self.serviceName = frame['message']['service']
             if self.serviceName not in self.circuit.server.introducedServices.keys():
                 raw_message = f"Service {self.serviceName} not found"
-                build_send_message(self.circuit.sock_from, "ERROR", "AES", self.circuit.aes_node_key, self.circuit.from_addr, raw_message, self.circuit.receiving_keys[::-1], self.circuit.nb_keys)
+                build_send_message(self.circuit.sock_from, "ERROR", "AES", self.circuit.aes_node_key,
+                                   self.circuit.from_addr, raw_message, self.circuit.receiving_keys[::-1],
+                                   self.circuit.nb_keys)
             else:
                 # si service bien là, relayer les infos au service
                 transfer = self.circuit.server.introducedServices[self.serviceName]
@@ -82,9 +84,11 @@ class ExtremityHandler:
                 pass
             case ExtremityRole.IntroductionPoint:
                 # stocker la fonction d'intro dans le serv
-                relay_intro = lambda message : build_send_message(self.circuit.sock_from, "RELAY", "AES", self.circuit.aes_node_key, self.circuit.from_addr, message, self.circuit.receiving_keys[::-1], self.circuit.nb_keys)
+                relay_intro = lambda message: build_send_message(self.circuit.sock_from, "RELAY", "AES",
+                                                                 self.circuit.aes_node_key, self.circuit.from_addr,
+                                                                 message, self.circuit.receiving_keys[::-1],
+                                                                 self.circuit.nb_keys)
                 self.circuit.server.introducedServices[self.serviceName] = relay_intro
-
 
 
 class CircuitNode:
@@ -102,8 +106,7 @@ class CircuitNode:
 
         # from/to à comprendre dans le sens de l'établissement de la connexion
         self.sock_from = conn
-        self.sock_to: socket.socket = None # utilisé uniquement si on n'est pas une extrémité
-
+        self.sock_to: socket.socket = None  # utilisé uniquement si on n'est pas une extrémité
 
     def close(self):
         self.stop_threads = True
@@ -127,14 +130,14 @@ class CircuitNode:
             try:
                 data = listen(self.sock_from)
                 if data:
-                    if self.aes_key_to == None and self.aes_node_key == None:         # si le noeud n'a pas encore reçu sa clef AES
-                        frame = pickle.loads(ecies.decrypt('0x'+self.server.privkey, data))
+                    if self.aes_key_to == None and self.aes_node_key == None:  # si le noeud n'a pas encore reçu sa clef AES
+                        frame = pickle.loads(ecies.decrypt('0x' + self.server.privkey, data))
                     elif self.EXTREMITY:
                         frame = pickle.loads(decrypt(data, self.aes_node_key))
                     else:
                         frame = pickle.loads(decrypt(data, self.aes_key_to))
 
-                    #print(frame)
+                    # print(frame)
                     if not self.EXTREMITY and frame["action"] == "key_establishment":
                         message = pickle.loads(frame['message'])
 
@@ -145,11 +148,11 @@ class CircuitNode:
 
                             self.aes_key_to = keys[0]
                             self.from_addr = self.addr
-                            #print("\nCLE ALLER:", self.aes_key_to)
+                            # print("\nCLE ALLER:", self.aes_key_to)
 
                             # clef retour
                             self.aes_key_back = keys[1]
-                            self.to_addr = dest[1].split(',')[1].split(':') # ip:port
+                            self.to_addr = dest[1].split(',')[1].split(':')  # ip:port
                             self.sock_to = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                             try:
                                 self.sock_to.connect((self.to_addr[0], int(self.to_addr[1])))
@@ -158,9 +161,9 @@ class CircuitNode:
                                 relayHandler.start_reverse_relay()
                                 self.messageHandler = relayHandler
                             except:
-                                #print("Can't contact the next node")
+                                # print("Can't contact the next node")
                                 pass
-                            #print("\nCLE RETOUR:", self.aes_key_back, '\n')
+                            # print("\nCLE RETOUR:", self.aes_key_back, '\n')
 
                         elif dest[0] == "destination":
                             # On devient une extrémité
@@ -169,7 +172,7 @@ class CircuitNode:
                             self.messageHandler = ExtremityHandler(self)
                             self.aes_node_key = message['m']
                             self.from_addr = self.addr
-                            #print("\nCLE DU NOEUD:", self.aes_node_key, '\n')
+                            # print("\nCLE DU NOEUD:", self.aes_node_key, '\n')
 
                     # EXTREMITY
                     elif not self.isSetUp and frame["action"] == "key_establishment":
@@ -179,9 +182,9 @@ class CircuitNode:
                         assert len(self.receiving_keys) == self.nb_keys
                         self.isSetUp = True
 
-                        #print('\n', self.receiving_keys)
-                        #print("je suis une extrémité de la connexion (mais je ne suis pas implémenté pour le moment)\n")
-                        #print("maintenant il faut continuer le programme monsieur svp")
+                        # print('\n', self.receiving_keys)
+                        # print("je suis une extrémité de la connexion (mais je ne suis pas implémenté pour le moment)\n")
+                        # print("maintenant il faut continuer le programme monsieur svp")
 
                     # Relais
                     else:
@@ -200,12 +203,12 @@ class NodeServer:
 
         self.key = PrivateKey()
         self.privkey = self.key.serialize()  # hexa
-        self.pubkey = self.key.pubkey.serialize()   # pas hexa
+        self.pubkey = self.key.pubkey.serialize()  # pas hexa
         # self.privkey = base64.b64decode(b'AQcx++axCPTh3xOmYC8IzUSrrgynvVarDp+2fZj/wf4=').hex()
         # self.pubkey = base64.b64decode(b'AwuTgwUZ6EezzlmP9LOuh6d8z9waqucFv09rSUYq0slS')
 
         self.circuits = []
-        
+
         self.introducedServices = dict()
 
     def __str__(self):
@@ -219,10 +222,19 @@ class NodeServer:
 
     def announce_to_relay(self):
         while True:
-            requests.get(ANNOUNCE_URL + f"/relays/add-myself/{self.port}/{base64.b64encode(self.pubkey).decode().replace('/', '_')}")
+            try:
+                print("Announcing myself to public-relay-list")
+                requests.get(
+                    ANNOUNCE_URL + f"/relays/add-myself/{self.port}/{base64.b64encode(self.pubkey).decode().replace('/', '_')}")
+                print("Announcing: Ok!")
+            except Exception as e:
+                print("Announcing: Failed! error:", e)
+
             time.sleep(ANNOUNCE_DELAY)
 
     def start(self):
+        print(f"Listening on {RELAY_LISTENING_IP}:{self.port}")
+
         # déclaration périodique au serveur public-relay-list
         Thread(target=self.announce_to_relay).start()
 
@@ -242,3 +254,4 @@ class NodeServer:
                 self.close()
                 print("Socket is dead :", e)
                 break
+

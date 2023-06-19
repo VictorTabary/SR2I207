@@ -7,7 +7,7 @@ import base64
 import hashlib
 import pickle
 import ecies
-from security.config import F_PACKET_SIZE
+from config import F_PACKET_SIZE
 
 
 PASSWORD_SIZE = 15

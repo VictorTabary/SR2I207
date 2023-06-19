@@ -2,9 +2,9 @@ import random
 
 import requests
 
-from security.config import ANNOUNCE_URL
-from security.connection import ConnectionClient, NodeObject
-from security.utils import *
+from config import ANNOUNCE_URL
+from connection import ConnectionClient, NodeObject
+from utils import *
 
 
 class HiddenServiceClient:
