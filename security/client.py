@@ -56,21 +56,20 @@ class HiddenServiceClient:
         print("Etablissement de la connexion avec le point d'intro:")
         self.introducerCircuit = ConnectionClient(NodeObject(*self.introducerMetadata[1:]), L)
 
+    def send(self, message:str):
         ### Passing Rendez-vous relay and one time password through the introducer to the hidden service ###
 
-        # TODO
-        raw_message = {'service': self.serviceHash, 'message': 'bien vu bg'}
-        build_send_message(self.introducerCircuit.s, "INTRO_CLIENT_SIDE", "AES", self.introducerCircuit.priv_node_key, None, raw_message, self.introducerCircuit.sending_keys, len(self.introducerCircuit.interm))
-        
+        raw_message = {'service': self.serviceHash, 'message': message }
+        build_send_message(self.introducerCircuit.s, "INTRO_CLIENT_SIDE", "AES", self.introducerCircuit.priv_node_key,
+                           None, raw_message, self.introducerCircuit.sending_keys, len(self.introducerCircuit.interm))
+
         print(f'''Envoyé "{raw_message['message']}" à {raw_message['service']}''')
 
         # we now have a ConnectionClient object wired to the hidden service
 
         ### Ping the hidden service ###
 
-        # TODO
+    def close(self):
 
         self.rdvCircuit.close()
         self.introducerCircuit.close()
-        return True
-

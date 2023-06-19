@@ -1,6 +1,6 @@
 import socket
 
-from security.utils import *
+from utils import *
 import time
 
 

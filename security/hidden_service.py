@@ -4,10 +4,15 @@ import random
 from threading import Thread
 from secp256k1 import PrivateKey
 
-from security.config import ANNOUNCE_URL, ANNOUNCE_DELAY
-from security.connection import ConnectionClient, NodeObject
-from security.utils import *
+from config import ANNOUNCE_URL, ANNOUNCE_DELAY
+from connection import ConnectionClient, NodeObject
+from utils import *
 
+
+def get_available_relays():
+    L = list(set(map(lambda x: tuple(x), requests.get(ANNOUNCE_URL + f"/relays").json())))
+    print(f"available relays : {len(L)}")
+    return L
 
 class HiddenService:
     def __init__(self):
@@ -22,6 +27,7 @@ class HiddenService:
         self.introCircuits = []
 
     def _getUnusedRelay(self):
+        # S'il y a une exception ici, assez probablement il n'y avait pas assez de relais dans la liste.
         elem = self.availableRelays.pop()
         return elem[0].replace('_', '/'), elem[1], elem[2]
     
@@ -39,7 +45,8 @@ class HiddenService:
                 print(pickle.loads(decrypt(data, circuit.priv_node_key))['message'])
 
     def start(self):
-        self.availableRelays = list(set(map(lambda x: tuple(x), requests.get(ANNOUNCE_URL + f"/relays").json())))
+        print("Hidden Service")
+        self.availableRelays = get_available_relays()
         random.shuffle(self.availableRelays)
 
         self.introducerNodes = []

@@ -1,4 +1,4 @@
-from security.client import HiddenServiceClient
+from client import HiddenServiceClient
 
 h = HiddenServiceClient("abcdefghijklmnopqrstuvwxyz")
 h.connect()
