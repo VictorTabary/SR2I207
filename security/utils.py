@@ -10,15 +10,17 @@ import ecies
 from config import F_PACKET_SIZE
 
 
-PASSWORD_SIZE = 15
+PASSWORD_SIZE = 25
 BLOCK_SIZE = 16
 pad = lambda s: s + ((BLOCK_SIZE - len(s) % BLOCK_SIZE) * chr(BLOCK_SIZE - len(s) % BLOCK_SIZE)).encode()
 unpad = lambda s: s[:-ord(s[len(s) - 1:])]
 
+def get_otp():
+    return ''.join(secrets.choice(string.ascii_letters + string.digits) for i in range(PASSWORD_SIZE))
 
 def get_private_key():
     salt = b"this is a random salt"
-    password = ''.join(secrets.choice(string.ascii_letters + string.digits) for i in range(PASSWORD_SIZE))
+    password = get_otp()
     kdf = PBKDF2(password, salt, 64, 1000)
     key = kdf[:32]
     return key
@@ -53,7 +55,6 @@ def encaps_frame(action, message):
 
 
 def build_send_message(s, action, cipher, cipher_key, info, message, sending_keys, node_id):
-
     if cipher == "ECIES":
         message = pickle.dumps({'info': info, 'm': message})
         frame = encaps_frame(action, message)
