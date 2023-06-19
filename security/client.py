@@ -69,21 +69,19 @@ class HiddenServiceClient:
         print("Etablissement de la connexion avec le point d'intro:")
         self.introducerCircuit = ConnectionClient(NodeObject(*self.introducerMetadata[1:]), L)
 
-
         self.send("INTRO_GET_KEY", "fqfqzfz")
         raw_key = listen(self.introducerCircuit.s)
-        key = base64.b64decode(pickle.loads(decrypt(raw_key, self.introducerCircuit.priv_node_key))['message'])
-        print(key)
-
-        
+        key = '0x' + base64.b64decode(pickle.loads(decrypt(raw_key, self.introducerCircuit.priv_node_key))['message']).hex()
+         
         ### Passing Rendez-vous relay and one time password through the introducer to the hidden service ###
         node_addr = self.rdvNode.ip + ':' + str(self.rdvNode.port)
         otp = get_otp()
-        message = {'rdv': node_addr, 'otp': otp}
-        # TODO: chiffrer le message avant de l'envoyer
-        #   pour ça il faut que le hidden service envoie sa clef publique aux points d'intro à la connexion
-        #   et après il faut gérer les connexions au hiddens service
+        raw_message = {'rdv': node_addr, 'key': self.rdvNode.key,'otp': otp}
+        message = ecies.encrypt(key, pickle.dumps(raw_message))
         self.send("INTRO_CLIENT_SIDE", message)
+
+        # envoyer raw_message['otp'] au point de rendez-vous et implémenter la réception
+
 
 
 

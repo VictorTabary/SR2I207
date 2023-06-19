@@ -19,11 +19,10 @@ class HiddenService:
         self.key = PrivateKey()
         self.privkey = "0x" + self.key.serialize()  # hexa
         self.pubkey = self.key.pubkey.serialize()   # pas hexa
-        print(self.pubkey)
         #self.hash = service_name(self.pubkey)
         self.hash = "abcdefghijklmnopqrstuvwxyz"
 
-        self.port = 10000
+        self.port = 10000   # à quoi ça sert?
 
         self.introCircuits = []
 
@@ -38,13 +37,26 @@ class HiddenService:
                 requests.get(ANNOUNCE_URL + f"/services/add/{self.hash}/{intro.key.replace('/', '_')}/{intro.ip}/{intro.port}/")
             time.sleep(ANNOUNCE_DELAY)
 
-    def listenRequests(self, circuit):
+    def listenIntroRequests(self, circuit):
         while True:
             data = listen(circuit.s)
             # gérer les connexions ici
             if data:
-                message = pickle.loads(decrypt(data, circuit.priv_node_key))['message']
+                frame = pickle.loads(decrypt(data, circuit.priv_node_key))
+                message = pickle.loads(ecies.decrypt(self.privkey, frame['message']))
                 print("Reçu : ",message) # debug ; TODO : delete
+
+                rdv = message['rdv'].split(':')
+                rdvNode = NodeObject(message['key'], rdv[0], int(rdv[1]))
+
+                print("Etablissement de la connexion avec le point de rendez-vous")
+                L = []
+                for i in range(3):
+                    L.append(NodeObject(*self._getUnusedRelay()))
+                rdvCircuit = ConnectionClient(rdvNode, L)
+
+                # envoyer message['otp'] au point de rendez-vosu et implémenter la réception
+
 
     def start(self):
         print("Hidden Service")
@@ -65,6 +77,7 @@ class HiddenService:
                 L.append(NodeObject(*self._getUnusedRelay()))
             circuit = ConnectionClient(node, L)
             self.introCircuits.append(circuit)
+
             raw_message = self.hash + ',' + base64.b64encode(self.pubkey).decode()
             build_send_message(circuit.s, "INTRO_SERVER_SIDE", "AES", circuit.priv_node_key, None, raw_message, circuit.sending_keys, len(circuit.interm))
 
@@ -72,7 +85,7 @@ class HiddenService:
 
         # écouter les connexions entrantes
         for circ in self.introCircuits:
-            Thread(target=self.listenRequests, args=(circ, )).start()
+            Thread(target=self.listenIntroRequests, args=(circ, )).start()
 
 
 
