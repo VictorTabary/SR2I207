@@ -1,6 +1,7 @@
 import random
 
 import requests
+import pickle
 
 from config import ANNOUNCE_URL
 from connection import ConnectionClient, NodeObject
@@ -25,9 +26,9 @@ class HiddenServiceClient:
         self.rdvCircuit.close()
         self.introducerCircuit.close()
 
-    def send(self, message):
+    def send(self, action, message):
         raw_message = {'service': self.serviceHash, 'message': message }
-        build_send_message(self.introducerCircuit.s, "INTRO_CLIENT_SIDE", "AES", self.introducerCircuit.priv_node_key,
+        build_send_message(self.introducerCircuit.s, action, "AES", self.introducerCircuit.priv_node_key,
                            None, raw_message, self.introducerCircuit.sending_keys, len(self.introducerCircuit.interm))
 
         print(f'''Envoyé "{raw_message['message']}" à {raw_message['service']}''')
@@ -68,15 +69,21 @@ class HiddenServiceClient:
         print("Etablissement de la connexion avec le point d'intro:")
         self.introducerCircuit = ConnectionClient(NodeObject(*self.introducerMetadata[1:]), L)
 
+
+        self.send("INTRO_GET_KEY", "fqfqzfz")
+        raw_key = listen(self.introducerCircuit.s)
+        key = base64.b64decode(pickle.loads(decrypt(raw_key, self.introducerCircuit.priv_node_key))['message'])
+        print(key)
+
         
         ### Passing Rendez-vous relay and one time password through the introducer to the hidden service ###
-        node_addr = self.rdvNode.ip + ',' + str(self.rdvNode.port)
+        node_addr = self.rdvNode.ip + ':' + str(self.rdvNode.port)
         otp = get_otp()
         message = {'rdv': node_addr, 'otp': otp}
         # TODO: chiffrer le message avant de l'envoyer
         #   pour ça il faut que le hidden service envoie sa clef publique aux points d'intro à la connexion
         #   et après il faut gérer les connexions au hiddens service
-        self.send(message)
+        self.send("INTRO_CLIENT_SIDE", message)
 
 
 

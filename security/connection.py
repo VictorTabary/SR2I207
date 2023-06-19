@@ -69,11 +69,6 @@ class ConnectionClient:
         build_send_message(self.s, "key_establishment", "AES", self.priv_node_key, info, pickle.dumps(self.receiving_keys), self.sending_keys, len(self.interm))
 
 
-        # for debug purposes
-        #print(self.sending_keys)
-        #print(self.receiving_keys)
-        #print(self.priv_node_key)
-
         print("\tConnexion établie")
         print('\t' + self.ping(b'duqizidqzbidzqb') + '\n')
 

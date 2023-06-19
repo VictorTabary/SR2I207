@@ -47,6 +47,7 @@ class ExtremityHandler:
         self.role = ExtremityRole.Undefined
 
         self.serviceName = None
+        self.serviceKey = None
 
     def pong(self, raw_message):
         # print("RECEIVED PING, SENDING PONG")
@@ -59,7 +60,20 @@ class ExtremityHandler:
 
         elif frame['action'] == 'INTRO_SERVER_SIDE':
             self.role = ExtremityRole.IntroductionPoint
-            self.serviceName = frame['message']
+            self.serviceName = frame['message'].split(',')[0]
+            self.serviceKey = frame['message'].split(',')[1].encode()
+
+        elif frame['action'] == 'INTRO_GET_KEY':
+            self.serviceName = frame['message']['service']
+            if self.serviceName not in self.circuit.server.introducedServices.keys():
+                raw_message = f"Service {self.serviceName} not found"
+                build_send_message(self.circuit.sock_from, "ERROR", "AES", self.circuit.aes_node_key,
+                                   self.circuit.from_addr, raw_message, self.circuit.receiving_keys[::-1],
+                                   self.circuit.nb_keys)
+            else:
+                raw_message = self.circuit.server.introducedServices[self.serviceName]["key"]
+                build_send_message(self.circuit.sock_from, "KEY", "AES", self.circuit.aes_node_key, self.circuit.from_addr,
+                           raw_message, self.circuit.receiving_keys[::-1], self.circuit.nb_keys)
 
         elif frame['action'] == 'INTRO_CLIENT_SIDE':
             # vérifier que le noeud est bien point d'intro pour le service demandé, sinon refuser
@@ -71,7 +85,7 @@ class ExtremityHandler:
                                    self.circuit.nb_keys)
             else:
                 # si service bien là, relayer les infos au service
-                transfer = self.circuit.server.introducedServices[self.serviceName]
+                transfer = self.circuit.server.introducedServices[self.serviceName]["func"]
                 transfer(frame['message']['message'])
 
                 # il faudrait gérer le retour avec la fonction transfer aussi
@@ -88,7 +102,8 @@ class ExtremityHandler:
                                                                  self.circuit.aes_node_key, self.circuit.from_addr,
                                                                  message, self.circuit.receiving_keys[::-1],
                                                                  self.circuit.nb_keys)
-                self.circuit.server.introducedServices[self.serviceName] = relay_intro
+                service_infos = {"func": relay_intro, "key": self.serviceKey}
+                self.circuit.server.introducedServices[self.serviceName] = service_infos
 
 
 class CircuitNode:

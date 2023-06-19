@@ -19,6 +19,7 @@ class HiddenService:
         self.key = PrivateKey()
         self.privkey = "0x" + self.key.serialize()  # hexa
         self.pubkey = self.key.pubkey.serialize()   # pas hexa
+        print(self.pubkey)
         #self.hash = service_name(self.pubkey)
         self.hash = "abcdefghijklmnopqrstuvwxyz"
 
@@ -29,7 +30,7 @@ class HiddenService:
     def _getUnusedRelay(self):
         # S'il y a une exception ici, assez probablement il n'y avait pas assez de relais dans la liste.
         elem = self.availableRelays.pop()
-        return elem[0].replace('_', '   /'), elem[1], elem[2]
+        return elem[0].replace('_', '/'), elem[1], elem[2]
     
     def announce_to_relay(self):
         while True:
@@ -64,8 +65,7 @@ class HiddenService:
                 L.append(NodeObject(*self._getUnusedRelay()))
             circuit = ConnectionClient(node, L)
             self.introCircuits.append(circuit)
-
-            raw_message = self.hash
+            raw_message = self.hash + ',' + base64.b64encode(self.pubkey).decode()
             build_send_message(circuit.s, "INTRO_SERVER_SIDE", "AES", circuit.priv_node_key, None, raw_message, circuit.sending_keys, len(circuit.interm))
 
         #print("Pour debuguer: \nles noeuds suivant sont toujours dispos:", self.availableRelays)

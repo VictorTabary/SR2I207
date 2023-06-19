@@ -9,7 +9,7 @@ from client import HiddenServiceClient
 
 h = HiddenServiceClient("abcdefghijklmnopqrstuvwxyz")
 h.connect()
-h.send("heeyyyy")
+h.send("INTRO_CLIENT_SIDE", "heeyyyy")
 h.close()
 
 EOF
