@@ -56,6 +56,7 @@ class HiddenServiceClient:
         print("Etablissement de la connexion avec le point d'intro:")
         self.introducerCircuit = ConnectionClient(NodeObject(*self.introducerMetadata[1:]), L)
 
+
     def send(self, message:str):
         ### Passing Rendez-vous relay and one time password through the introducer to the hidden service ###
 
@@ -68,6 +69,7 @@ class HiddenServiceClient:
         # we now have a ConnectionClient object wired to the hidden service
 
         ### Ping the hidden service ###
+
 
     def close(self):
 
