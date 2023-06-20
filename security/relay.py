@@ -46,8 +46,12 @@ class ExtremityHandler:
         self.circuit = circuit
         self.role = ExtremityRole.Undefined
 
+        # quand on est intro
         self.serviceName = None
         self.serviceKey = None
+
+        # quand on est rdv
+        self.conn_id = None
 
     def pong(self, raw_message):
         # print("RECEIVED PING, SENDING PONG")
@@ -56,12 +60,31 @@ class ExtremityHandler:
 
     def handle_message(self, frame):
         if frame['action'] == 'PING':
-            self.pong(frame['message'])
+            self.pong(frame['message'])         
+
 
         elif frame['action'] == 'INTRO_SERVER_SIDE':
             self.role = ExtremityRole.IntroductionPoint
             self.serviceName = frame['message'].split(',')[0]
             self.serviceKey = frame['message'].split(',')[1].encode()
+
+
+        elif frame['action'] == 'RDV_GET_CONN_ID':
+            self.role = ExtremityRole.RendezVous
+
+
+        elif frame['action'] == 'RDV_CLIENT_OTP':
+            id = frame['message']['conn_id']
+            if id != self.conn_id or self.circuit.server.rdvConns[self.conn_id]['client'] != None:
+                raw_message = f"Connection {frame['message']['conn_id']} not found"
+                build_send_message(self.circuit.sock_from, "ERROR", "AES", self.circuit.aes_node_key,
+                                   self.circuit.from_addr, raw_message, self.circuit.receiving_keys[::-1],
+                                   self.circuit.nb_keys)
+            else:
+                client_otp = frame['message']['message']
+                self.circuit.server.rdvConns[self.conn_id]['client'] = self.circuit
+                print(f"\n\n\nCLIENT OTP: {client_otp}\n\n\n")
+
 
         elif frame['action'] == 'INTRO_GET_KEY':
             self.serviceName = frame['message']['service']
@@ -91,11 +114,39 @@ class ExtremityHandler:
                 # il faudrait gérer le retour avec la fonction transfer aussi
                 # donc la déclarer un peu autrement pour transférer aussi au retour
 
+        elif frame['action'] == "RDV_SERVICE_OTP":
+            id = frame['message']['conn_id']
+            if id not in self.circuit.server.rdvConns.keys() or (id in self.circuit.server.rdvConns.keys() and self.circuit.server.rdvConns[id]['service'] != None):
+                raw_message = f"Connection {frame['message']['conn_id']} not found"
+                build_send_message(self.circuit.sock_from, "ERROR", "AES", self.circuit.aes_node_key,
+                                   self.circuit.from_addr, raw_message, self.circuit.receiving_keys[::-1],
+                                   self.circuit.nb_keys)
+            elif self.circuit.server.rdvConns[id]['client'] == None:
+                # dans ce cas c'est le bordel
+                print(f"\n\n\nSERVICE OTP: bordel\t{self.circuit.server.rdvConns[id]}\n\n\n")
+                pass
+            else:
+                service_otp = frame['message']['message']
+                self.circuit.server.rdvConns[id]['service'] = self.circuit
+
+
+
         match self.role:
             case ExtremityRole.Undefined:
                 pass
+
             case ExtremityRole.RendezVous:
-                pass
+                if self.conn_id is None:
+                    self.conn_id = get_id()
+                    while self.conn_id in self.circuit.server.rdvConns.keys():
+                        self.conn_id = get_id()
+                    self.circuit.server.rdvConns[self.conn_id] = {'client': None, 'service': None}
+
+                    raw_message = self.conn_id
+                    build_send_message(self.circuit.sock_from, "CONN_ID", "AES", self.circuit.aes_node_key,
+                                   self.circuit.from_addr, raw_message, self.circuit.receiving_keys[::-1],
+                                   self.circuit.nb_keys)                    
+                    
             case ExtremityRole.IntroductionPoint:
                 # stocker la fonction d'intro dans le serv
                 relay_intro = lambda message: build_send_message(self.circuit.sock_from, "RELAY", "AES",
@@ -224,7 +275,11 @@ class NodeServer:
 
         self.circuits = []
 
+        # pour les points d'intro
         self.introducedServices = dict()
+
+        # pour les points de rdv
+        self.rdvConns = dict()
 
     def __str__(self):
         return f"Node at address {self.ip} with public key \n{self.key}."

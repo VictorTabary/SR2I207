@@ -37,6 +37,13 @@ class HiddenService:
                 requests.get(ANNOUNCE_URL + f"/services/add/{self.hash}/{intro.key.replace('/', '_')}/{intro.ip}/{intro.port}/")
             time.sleep(ANNOUNCE_DELAY)
 
+    def send_rdv(self, circuit, conn_id, action, message):
+        raw_message = {'conn_id': conn_id, 'message': message }
+        build_send_message(circuit.s, action, "AES", circuit.priv_node_key,
+                           None, raw_message, circuit.sending_keys, len(circuit.interm))
+
+        print(f'''Envoyé "{raw_message['message']}" sur la connexion {raw_message['conn_id']}''')
+
     def listenIntroRequests(self, circuit):
         while True:
             data = listen(circuit.s)
@@ -48,6 +55,8 @@ class HiddenService:
 
                 rdv = message['rdv'].split(':')
                 rdvNode = NodeObject(message['key'], rdv[0], int(rdv[1]))
+                conn_id = message['conn_id']
+                otp = message['otp']
 
                 print("Etablissement de la connexion avec le point de rendez-vous")
                 L = []
@@ -55,7 +64,11 @@ class HiddenService:
                     L.append(NodeObject(*self._getUnusedRelay()))
                 rdvCircuit = ConnectionClient(rdvNode, L)
 
-                # envoyer message['otp'] au point de rendez-vosu et implémenter la réception
+                self.send_rdv(rdvCircuit, conn_id, "RDV_SERVICE_OTP", otp)
+
+
+
+                # TODO: envoyer message['otp'] et message['conn_id'] au point de rendez-vosu et implémenter la réception
 
 
     def start(self):

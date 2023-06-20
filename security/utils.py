@@ -8,6 +8,7 @@ import hashlib
 import pickle
 import ecies
 from config import F_PACKET_SIZE
+import uuid
 
 
 PASSWORD_SIZE = 25
@@ -42,6 +43,8 @@ def decrypt(enc, private_key):
 def service_name(key):
     return base64.b32encode(hashlib.sha1(key).digest()).decode().lower()
 
+def get_id():
+    return str(uuid.uuid4())
 
 def send_message(s, message):
     try:
