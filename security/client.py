@@ -102,12 +102,17 @@ class HiddenServiceClient:
         self.send_intro("INTRO_CLIENT_SIDE", message)
 
 
-        # envoyer raw_message['otp'] au point de rendez-vous et implémenter la réception
+        # wait for the message saying that the connection is up
 
-
-
+        data = listen(self.rdvCircuit.s)
+        message = pickle.loads(decrypt(data, self.rdvCircuit.priv_node_key))['message']
+        while message != "CONNECTION_UP":
+            data = listen(self.rdvCircuit.s)
+            message = pickle.loads(decrypt(data, self.rdvCircuit.priv_node_key))['message']
 
         # we now have a ConnectionClient object wired to the hidden service
+
+        print("\nConnection with the service is now up !")
 
         ### Ping the hidden service ###    
 

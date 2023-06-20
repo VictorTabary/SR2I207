@@ -82,7 +82,7 @@ class ExtremityHandler:
                                    self.circuit.nb_keys)
             else:
                 client_otp = frame['message']['message']
-                self.circuit.server.rdvConns[self.conn_id]['client'] = self.circuit
+                self.circuit.server.rdvConns[self.conn_id]['client'] = [self.circuit, client_otp]
                 print(f"\n\n\nCLIENT OTP: {client_otp}\n\n\n")
 
 
@@ -127,7 +127,26 @@ class ExtremityHandler:
                 pass
             else:
                 service_otp = frame['message']['message']
-                self.circuit.server.rdvConns[id]['service'] = self.circuit
+                self.circuit.server.rdvConns[id]['service'] = [self.circuit, service_otp]
+
+                if service_otp != self.circuit.server.rdvConns[id]['client'][1]:
+                    raw_message = "Wrong OTP"
+                    build_send_message(self.circuit.sock_from, "ERROR", "AES", self.circuit.aes_node_key,
+                                   self.circuit.from_addr, raw_message, self.circuit.receiving_keys[::-1],
+                                   self.circuit.nb_keys)
+                else:
+                    client_circuit = self.circuit.server.rdvConns[id]['client'][0]
+                    raw_message = "CONNECTION_UP"
+
+                    build_send_message(client_circuit.sock_from, "CONNECTION_STATE", "AES", client_circuit.aes_node_key,
+                                    client_circuit.from_addr, raw_message, client_circuit.receiving_keys[::-1],
+                                    client_circuit.nb_keys)
+
+                    build_send_message(self.circuit.sock_from, "CONNECTION_STATE", "AES", self.circuit.aes_node_key,
+                                    self.circuit.from_addr, raw_message, self.circuit.receiving_keys[::-1],
+                                    self.circuit.nb_keys)
+                    
+                    self.circuit.server.rdvConns[id]['state'] = 'up'
 
 
 
@@ -140,7 +159,7 @@ class ExtremityHandler:
                     self.conn_id = get_id()
                     while self.conn_id in self.circuit.server.rdvConns.keys():
                         self.conn_id = get_id()
-                    self.circuit.server.rdvConns[self.conn_id] = {'client': None, 'service': None}
+                    self.circuit.server.rdvConns[self.conn_id] = {'client': None, 'service': None, 'state': 'down'}
 
                     raw_message = self.conn_id
                     build_send_message(self.circuit.sock_from, "CONN_ID", "AES", self.circuit.aes_node_key,

@@ -44,6 +44,17 @@ class HiddenService:
 
         print(f'''Envoyé "{raw_message['message']}" sur la connexion {raw_message['conn_id']}''')
 
+    def listenRdvRequest(self, circuit, conn_id, otp):
+        self.send_rdv(circuit, conn_id, "RDV_SERVICE_OTP", otp)
+        # wait for the message saying that the connection is up
+        data = listen(circuit.s)
+        message = pickle.loads(decrypt(data, circuit.priv_node_key))['message']
+        while message != "CONNECTION_UP":
+            data = listen(circuit.s)
+            message = pickle.loads(decrypt(data, circuit.priv_node_key))['message']
+        
+        print("\nConnection with the client is now up !")
+
     def listenIntroRequests(self, circuit):
         while True:
             data = listen(circuit.s)
@@ -64,11 +75,8 @@ class HiddenService:
                     L.append(NodeObject(*self._getUnusedRelay()))
                 rdvCircuit = ConnectionClient(rdvNode, L)
 
-                self.send_rdv(rdvCircuit, conn_id, "RDV_SERVICE_OTP", otp)
+                Thread(target=self.listenRdvRequest, args=(rdvCircuit, conn_id, otp)).start()
 
-
-
-                # TODO: envoyer message['otp'] et message['conn_id'] au point de rendez-vosu et implémenter la réception
 
 
     def start(self):
