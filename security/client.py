@@ -22,9 +22,9 @@ class HiddenServiceClient:
         return elem[0].replace('_', '/'), elem[1], elem[2]
 
     def close(self):
-
         self.rdvCircuit.close()
         self.introducerCircuit.close()
+
 
     def send_intro(self, action, message):
         raw_message = {'service': self.serviceHash, 'message': message }
@@ -40,6 +40,10 @@ class HiddenServiceClient:
                            None, raw_message, self.rdvCircuit.sending_keys, len(self.rdvCircuit.interm))
 
         #print(f'''Envoyé "{raw_message['message']}" sur la connexion {raw_message['conn_id']}''')
+
+
+    def send_service(self, action, message):
+        pass
 
 
     def connect(self):
@@ -112,7 +116,20 @@ class HiddenServiceClient:
 
         # we now have a ConnectionClient object wired to the hidden service
 
+        # send a key to the service to cipher the connection and wait for response
+        self.exchangeKey = get_private_key()
+        message = ecies.encrypt(key, self.exchangeKey)
+        self.send_rdv("KEY_SETUP", message)
+
+        print("Key sent")
+        print(self.exchangeKey)
+
+        data = listen(self.rdvCircuit.s)
+        message = pickle.loads(decrypt(data, self.rdvCircuit.priv_node_key))['message']
+        while decrypt(message['message'], self.exchangeKey) != b"Key received":
+            data = listen(self.rdvCircuit.s)
+            message = pickle.loads(decrypt(data, self.rdvCircuit.priv_node_key))['message']
+
         print("\nConnection with the service is now up !")
 
-        ### Ping the hidden service ###    
-
+        ### Ping the hidden service ###   

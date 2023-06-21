@@ -83,7 +83,6 @@ class ExtremityHandler:
             else:
                 client_otp = frame['message']['message']
                 self.circuit.server.rdvConns[self.conn_id]['client'] = [self.circuit, client_otp]
-                print(f"\n\n\nCLIENT OTP: {client_otp}\n\n\n")
 
 
         elif frame['action'] == 'INTRO_GET_KEY':
@@ -97,6 +96,7 @@ class ExtremityHandler:
                 raw_message = self.circuit.server.introducedServices[self.serviceName]["key"]
                 build_send_message(self.circuit.sock_from, "KEY", "AES", self.circuit.aes_node_key, self.circuit.from_addr,
                            raw_message, self.circuit.receiving_keys[::-1], self.circuit.nb_keys)
+
 
         elif frame['action'] == 'INTRO_CLIENT_SIDE':
             # vérifier que le noeud est bien point d'intro pour le service demandé, sinon refuser
@@ -113,6 +113,7 @@ class ExtremityHandler:
 
                 # il faudrait gérer le retour avec la fonction transfer aussi
                 # donc la déclarer un peu autrement pour transférer aussi au retour
+
 
         elif frame['action'] == "RDV_SERVICE_OTP":
             id = frame['message']['conn_id']
@@ -147,8 +148,24 @@ class ExtremityHandler:
                                     self.circuit.nb_keys)
                     
                     self.circuit.server.rdvConns[id]['state'] = 'up'
+        
 
+        elif frame['action'] == "KEY_SETUP":
+            id = frame['message']['conn_id']
+            raw_message = frame['message']
+            service_circuit = self.circuit.server.rdvConns[id]['service'][0]
 
+            build_send_message(service_circuit.sock_from, "KEY_SETUP", "AES", service_circuit.aes_node_key,
+                                    service_circuit.from_addr, raw_message, service_circuit.receiving_keys[::-1],
+                                    service_circuit.nb_keys)
+        
+        elif frame['action'] == "ACK":
+            id = frame['message']['conn_id']
+            raw_message = frame['message']
+            client_circuit = self.circuit.server.rdvConns[id]['client'][0]
+            build_send_message(client_circuit.sock_from, "ACK", "AES", client_circuit.aes_node_key,
+                                    client_circuit.from_addr, raw_message, client_circuit.receiving_keys[::-1],
+                                    client_circuit.nb_keys)
 
         match self.role:
             case ExtremityRole.Undefined:

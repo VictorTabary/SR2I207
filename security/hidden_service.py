@@ -37,12 +37,18 @@ class HiddenService:
                 requests.get(ANNOUNCE_URL + f"/services/add/{self.hash}/{intro.key.replace('/', '_')}/{intro.ip}/{intro.port}/")
             time.sleep(ANNOUNCE_DELAY)
 
+
     def send_rdv(self, circuit, conn_id, action, message):
         raw_message = {'conn_id': conn_id, 'message': message }
         build_send_message(circuit.s, action, "AES", circuit.priv_node_key,
                            None, raw_message, circuit.sending_keys, len(circuit.interm))
 
-        print(f'''Envoyé "{raw_message['message']}" sur la connexion {raw_message['conn_id']}''')
+        #print(f'''Envoyé "{raw_message['message']}" sur la connexion {raw_message['conn_id']}''')
+
+
+    def send_client(self, circuit, conn_id, action, message, key):
+        self.send_rdv(circuit, conn_id, action, encrypt(message.encode(), key))
+
 
     def listenRdvRequest(self, circuit, conn_id, otp):
         self.send_rdv(circuit, conn_id, "RDV_SERVICE_OTP", otp)
@@ -52,8 +58,23 @@ class HiddenService:
         while message != "CONNECTION_UP":
             data = listen(circuit.s)
             message = pickle.loads(decrypt(data, circuit.priv_node_key))['message']
-        
-        print("\nConnection with the client is now up !")
+
+        exchangeKey = None
+        while True:
+            data = listen(circuit.s)
+            if data:
+                frame = pickle.loads(decrypt(data, circuit.priv_node_key))
+                if frame['action'] == "KEY_SETUP": 
+                    # cas spécial pour le départ
+                    exchangeKey = ecies.decrypt(self.privkey, frame['message']['message'])
+                    self.send_client(circuit, frame['message']['conn_id'], "ACK", "Key received", exchangeKey)
+                    print("\nConnection with the client is now up !")
+                
+                else:
+                    message = decrypt(frame['message'], exchangeKey)
+                    #if frame['action'] == "PING":
+                    #    self.send_client(circuit, frame['message']['conn_id'], "PONG", frame['message']['message'], exchangeKey)
+
 
     def listenIntroRequests(self, circuit):
         while True:
