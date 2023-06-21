@@ -152,20 +152,44 @@ class ExtremityHandler:
 
         elif frame['action'] == "KEY_SETUP":
             id = frame['message']['conn_id']
-            raw_message = frame['message']
+            raw_message = frame['message']['message']
             service_circuit = self.circuit.server.rdvConns[id]['service'][0]
 
             build_send_message(service_circuit.sock_from, "KEY_SETUP", "AES", service_circuit.aes_node_key,
                                     service_circuit.from_addr, raw_message, service_circuit.receiving_keys[::-1],
                                     service_circuit.nb_keys)
         
+
         elif frame['action'] == "ACK":
             id = frame['message']['conn_id']
-            raw_message = frame['message']
+            raw_message = frame['message']['message']
             client_circuit = self.circuit.server.rdvConns[id]['client'][0]
             build_send_message(client_circuit.sock_from, "ACK", "AES", client_circuit.aes_node_key,
                                     client_circuit.from_addr, raw_message, client_circuit.receiving_keys[::-1],
                                     client_circuit.nb_keys)
+            
+
+        elif frame['action'] == "TRANSFER_SERVICE":
+            id = frame['message']['conn_id']
+            raw_message = frame['message']['message']
+            service_circuit = self.circuit.server.rdvConns[id]['service'][0]
+
+            build_send_message(service_circuit.sock_from, frame['action'], "AES", service_circuit.aes_node_key,
+                                    service_circuit.from_addr, raw_message, service_circuit.receiving_keys[::-1],
+                                    service_circuit.nb_keys)
+            
+
+        elif frame['action'] == "TRANSFER_CLIENT":
+            id = frame['message']['conn_id']
+            raw_message = frame['message']['message']
+            service_circuit = self.circuit.server.rdvConns[id]['service'][0]
+
+            client_circuit = self.circuit.server.rdvConns[id]['client'][0]
+            build_send_message(client_circuit.sock_from, "TRANSFER_CLIENT", "AES", client_circuit.aes_node_key,
+                                    client_circuit.from_addr, raw_message, client_circuit.receiving_keys[::-1],
+                                    client_circuit.nb_keys)
+        
+
 
         match self.role:
             case ExtremityRole.Undefined:

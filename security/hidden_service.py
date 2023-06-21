@@ -39,15 +39,19 @@ class HiddenService:
 
 
     def send_rdv(self, circuit, conn_id, action, message):
-        raw_message = {'conn_id': conn_id, 'message': message }
+        raw_message = {'conn_id': conn_id, 'message': message}
         build_send_message(circuit.s, action, "AES", circuit.priv_node_key,
                            None, raw_message, circuit.sending_keys, len(circuit.interm))
 
         #print(f'''Envoyé "{raw_message['message']}" sur la connexion {raw_message['conn_id']}''')
 
 
-    def send_client(self, circuit, conn_id, action, message, key):
-        self.send_rdv(circuit, conn_id, action, encrypt(message.encode(), key))
+    def send_client(self, circuit, conn_id, info, message, key):
+        to_relay = {'info': info, 'message': message}
+        ciphered = encrypt(pickle.dumps(to_relay), key)
+        raw_message = {'conn_id': conn_id, 'message': ciphered}
+        build_send_message(circuit.s, "TRANSFER_CLIENT", "AES", circuit.priv_node_key,
+                           None, raw_message, circuit.sending_keys, len(circuit.interm))
 
 
     def listenRdvRequest(self, circuit, conn_id, otp):
@@ -66,14 +70,13 @@ class HiddenService:
                 frame = pickle.loads(decrypt(data, circuit.priv_node_key))
                 if frame['action'] == "KEY_SETUP": 
                     # cas spécial pour le départ
-                    exchangeKey = ecies.decrypt(self.privkey, frame['message']['message'])
-                    self.send_client(circuit, frame['message']['conn_id'], "ACK", "Key received", exchangeKey)
+                    exchangeKey = ecies.decrypt(self.privkey, frame['message'])
+                    self.send_rdv(circuit, conn_id, "ACK", encrypt("Key received".encode(), exchangeKey))
                     print("\nConnection with the client is now up !")
-                
                 else:
-                    message = decrypt(frame['message'], exchangeKey)
-                    #if frame['action'] == "PING":
-                    #    self.send_client(circuit, frame['message']['conn_id'], "PONG", frame['message']['message'], exchangeKey)
+                    message = pickle.loads(decrypt(frame['message'], exchangeKey))
+                    if message['info'] == "PING":
+                        self.send_client(circuit, conn_id, "PONG", message['message'], exchangeKey)
 
 
     def listenIntroRequests(self, circuit):
