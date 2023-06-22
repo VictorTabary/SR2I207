@@ -50,7 +50,7 @@ Pour exporter la clé publique :
 
 
 Trame pour la distribution des clés:
-	{'action': 'key_establishment', 'enc_message': SOME_ENCRYPTED_MESSAGE}
+	{'action': 'key_establishment', 'message': MESSAGE}
 	le message:
 	{'info': INFO, 'm': LA CLE}
 
