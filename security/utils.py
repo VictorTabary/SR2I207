@@ -24,7 +24,7 @@ def get_otp():
 def get_private_key():
     salt = b"this is a random salt"
     password = get_otp()
-    kdf = PBKDF2(password, salt, 64, 1000)
+    kdf = PBKDF2(password, salt, 256, 1000)
     key = kdf[:32]
     return key
 
